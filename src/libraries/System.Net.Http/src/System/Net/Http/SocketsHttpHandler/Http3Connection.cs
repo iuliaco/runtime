@@ -38,6 +38,7 @@ namespace System.Net.Http
 
         // Current SETTINGS from the server.
         private int _maximumHeadersLength = int.MaxValue; // TODO: this is not yet observed by Http3Stream when buffering headers.
+        private int _enableWebTransport; // by default setted with 0
 
         // Once the server's streams are received, these are set to 1. Further receipt of these streams results in a connection error.
         private int _haveServerControlStream;
@@ -375,18 +376,21 @@ namespace System.Net.Http
 
         public static byte[] BuildSettingsFrame(HttpConnectionSettings settings)
         {
-            Span<byte> buffer = stackalloc byte[4 + VariableLengthIntegerHelper.MaximumEncodedLength];
+            Span<byte> buffer = stackalloc byte[4 + VariableLengthIntegerHelper.MaximumEncodedLength + 5];
 
-            int integerLength = VariableLengthIntegerHelper.WriteInteger(buffer.Slice(4), settings._maxResponseHeadersLength * 1024L);
-            int payloadLength = 1 + integerLength; // includes the setting ID and the integer value.
+            // will always be 4B
+            int webtransportLength = VariableLengthIntegerHelper.WriteInteger(buffer.Slice(3), (long)Http3SettingType.EnableWebTransport);
+            int integerLength = VariableLengthIntegerHelper.WriteInteger(buffer.Slice(9), settings._maxResponseHeadersLength * 1024L);
+            int payloadLength = 2 + integerLength + webtransportLength; // includes the se1tting ID, the integer value, and the webtransport value.
             Debug.Assert(payloadLength <= VariableLengthIntegerHelper.OneByteLimit);
 
             buffer[0] = (byte)Http3StreamType.Control;
             buffer[1] = (byte)Http3FrameType.Settings;
             buffer[2] = (byte)payloadLength;
-            buffer[3] = (byte)Http3SettingType.MaxHeaderListSize;
+            buffer[7] = (byte)1;
+            buffer[8] = (byte)Http3SettingType.MaxHeaderListSize;
 
-            return buffer.Slice(0, 4 + integerLength).ToArray();
+            return buffer.Slice(0, 4 + 5 + integerLength).ToArray();
         }
 
         /// <summary>
@@ -702,6 +706,11 @@ namespace System.Net.Http
                     {
                         case Http3SettingType.MaxHeaderListSize:
                             _maximumHeadersLength = (int)Math.Min(settingValue, int.MaxValue);
+                            break;
+                        case Http3SettingType.EnableWebTransport:
+                            if(settingValue != 0 && settingValue != 1)
+                                throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.SettingsError);
+                            _enableWebTransport = (int)settingValue;
                             break;
                         case Http3SettingType.ReservedHttp2EnablePush:
                         case Http3SettingType.ReservedHttp2MaxConcurrentStreams:

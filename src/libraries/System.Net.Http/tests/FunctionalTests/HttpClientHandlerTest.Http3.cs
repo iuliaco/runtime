@@ -59,7 +59,7 @@ namespace System.Net.Http.Functional.Tests
                 {
                     Assert.False(settingsStream.CanWrite, "Expected unidirectional control stream.");
                     Assert.Equal(headerSizeLimit * 1024L, connection.MaxHeaderListSize);
-
+                    Console.WriteLine(connection.EnableWebtransport);
                     await requestStream.ReadRequestDataAsync();
                     await requestStream.SendResponseAsync();
                 }
@@ -71,6 +71,42 @@ namespace System.Net.Http.Functional.Tests
                 handler.MaxResponseHeadersLength = headerSizeLimit;
 
                 using HttpClient client = CreateHttpClient(handler);
+                using HttpRequestMessage request = new()
+                {
+                    Method = HttpMethod.Get,
+                    RequestUri = server.Address,
+                    Version = HttpVersion30,
+                    VersionPolicy = HttpVersionPolicy.RequestVersionExact
+                };
+                using HttpResponseMessage response = await client.SendAsync(request);
+            });
+
+            await new[] { clientTask, serverTask }.WhenAllOrAnyFailed(20_000);
+        }
+
+        [Fact]
+        public async Task ClientSettingsWebTransportReceived_Success()
+        {
+            using Http3LoopbackServer server = CreateHttp3LoopbackServer();
+
+            Task serverTask = Task.Run(async () =>
+            {
+                await using Http3LoopbackConnection connection = (Http3LoopbackConnection)await server.EstablishGenericConnectionAsync();
+
+                (Http3LoopbackStream settingsStream, Http3LoopbackStream requestStream) = await connection.AcceptControlAndRequestStreamAsync();
+
+                await using (settingsStream)
+                await using (requestStream)
+                {
+                    Assert.Equal(1, connection.EnableWebtransport);
+                    await requestStream.ReadRequestDataAsync();
+                    await requestStream.SendResponseAsync();
+                }
+            });
+
+            Task clientTask = Task.Run(async () =>
+            {
+                using HttpClient client = CreateHttpClient();
                 using HttpRequestMessage request = new()
                 {
                     Method = HttpMethod.Get,
