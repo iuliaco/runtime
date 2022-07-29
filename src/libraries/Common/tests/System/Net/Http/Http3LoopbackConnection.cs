@@ -189,11 +189,11 @@ namespace System.Net.Test.Common
             return (controlStream, requestStream);
         }
 
-        public async Task EstablishControlStreamAsync()
+        public async Task EstablishControlStreamAsync(ICollection<(long settingId, long settingValue)> settings = null)
         {
             _outboundControlStream = await OpenUnidirectionalStreamAsync();
             await _outboundControlStream.SendUnidirectionalStreamTypeAsync(Http3LoopbackStream.ControlStream);
-            await _outboundControlStream.SendSettingsFrameAsync();
+            await _outboundControlStream.SendSettingsFrameAsync(settings);
         }
 
         public override async Task<byte[]> ReadRequestBodyAsync()

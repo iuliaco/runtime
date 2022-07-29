@@ -170,6 +170,8 @@ namespace System.Net.Http
 
         internal bool IsWebSocketH2Request() => _version.Major == 2 && Method == HttpMethod.Connect && HasHeaders && string.Equals(Headers.Protocol, "websocket", StringComparison.OrdinalIgnoreCase);
 
+        internal bool IsWebTransportH3Request() => _version.Major == 3 && Method == HttpMethod.Connect && HasHeaders && string.Equals(Headers.Protocol, "webtransport", StringComparison.OrdinalIgnoreCase);
+
         #region IDisposable Members
 
         protected virtual void Dispose(bool disposing)

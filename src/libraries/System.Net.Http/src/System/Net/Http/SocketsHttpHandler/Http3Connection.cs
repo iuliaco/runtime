@@ -55,6 +55,7 @@ namespace System.Net.Http
         public HttpAuthority Authority => _authority;
         public HttpConnectionPool Pool => _pool;
         public int MaximumRequestHeadersLength => _maximumHeadersLength;
+        public int EnableWebTransport => _enableWebTransport;
         public byte[] AltUsedEncodedHeaderBytes => _altUsedEncodedHeader;
         public Exception? AbortException => Volatile.Read(ref _abortException);
         private object SyncObj => _activeRequests;
@@ -707,7 +708,10 @@ namespace System.Net.Http
                             _maximumHeadersLength = (int)Math.Min(settingValue, int.MaxValue);
                             break;
                         case Http3SettingType.EnableWebTransport:
-                            if(settingValue != 0 && settingValue != 1)
+                            // Per https://datatracker.ietf.org/doc/html/draft-ietf-webtrans-http3#section-3.1
+                            // an endpoint that receives a value other than "0" or "1" MUST close the
+                            // connection with the H3_SETTINGS_ERROR error code.
+                            if (settingValue != 0 && settingValue != 1)
                                 throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.SettingsError);
                             _enableWebTransport = (int)settingValue;
                             break;
