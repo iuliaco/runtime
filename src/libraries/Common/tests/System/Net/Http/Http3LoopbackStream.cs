@@ -29,6 +29,7 @@ namespace System.Net.Test.Common
         public const long PushStream = 0x1;
 
         public const long MaxHeaderListSize = 0x6;
+        public const long EnableWebTransport = 0x2b603742;
 
         private readonly QuicStream _stream;
 

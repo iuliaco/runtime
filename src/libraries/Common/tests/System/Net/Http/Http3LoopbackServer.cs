@@ -75,6 +75,20 @@ namespace System.Net.Test.Common
             return connection;
         }
 
+        private async Task<Http3LoopbackConnection> EstablishHttp3ConnectionSettingsFrameAsync(ICollection<(long settingId, long settingValue)> settings = null)
+        {
+            QuicConnection con = await _listener.AcceptConnectionAsync().ConfigureAwait(false);
+            Http3LoopbackConnection connection = new Http3LoopbackConnection(con);
+
+            await connection.EstablishControlStreamAsync(settings);
+            return connection;
+        }
+
+        public async Task<GenericLoopbackConnection> EstablishSettingsFrameGenericConnectionAsync(ICollection<(long settingId, long settingValue)> settings = null)
+        {
+            return await EstablishHttp3ConnectionSettingsFrameAsync(settings);
+        }
+
         public override async Task<GenericLoopbackConnection> EstablishGenericConnectionAsync()
         {
             return await EstablishHttp3ConnectionAsync();
