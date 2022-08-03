@@ -123,6 +123,45 @@ namespace System.Net.Http.Functional.Tests
             await new[] { clientTask, serverTask }.WhenAllOrAnyFailed(20_000);
         }
 
+        [Fact]
+        public async Task ClientSettingsWebTransportServerReceived_Success()
+        {
+            using var listener = new TestUtilities.TestEventListener(_output, TestUtilities.TestEventListener.NetworkingEvents);
+
+            Task clientTask = Task.Run(async () =>
+            {
+                using HttpClient client = CreateHttpClient();
+                 using HttpRequestMessage request = new()
+                {
+                    Method = HttpMethod.Get,
+                    RequestUri = new Uri("https://127.0.0.1:5002/"),
+                    Version = HttpVersion30,
+                    VersionPolicy = HttpVersionPolicy.RequestVersionExact
+                };
+                using HttpResponseMessage response = await client.SendAsync(request);
+                Console.Write(response);
+                using HttpRequestMessage request3 = new()
+                {
+                    Method = HttpMethod.Get,
+                    RequestUri = new Uri("https://127.0.0.1:5002/"),
+                    Version = HttpVersion30,
+                    VersionPolicy = HttpVersionPolicy.RequestVersionExact
+                };
+                using HttpResponseMessage response3 = await client.SendAsync(request3);
+                Console.Write(response3);
+                HttpRequestMessage request2 = new(HttpMethod.Connect, new Uri("https://127.0.0.1:5002/"));
+                request2.Version = HttpVersion.Version30;
+                request2.VersionPolicy = HttpVersionPolicy.RequestVersionExact;
+                request2.Headers.Protocol = "webtransport";
+                using HttpResponseMessage response2 = await client.SendAsync(true, request2, HttpCompletionOption.ResponseHeadersRead);
+                Console.Write(response2);
+
+            });
+
+
+            await new[] { clientTask }.WhenAllOrAnyFailed(20_000);
+        }
+
         [Theory]
         [InlineData(10)]
         [InlineData(100)]

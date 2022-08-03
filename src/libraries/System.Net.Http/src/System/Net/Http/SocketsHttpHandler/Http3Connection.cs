@@ -418,7 +418,7 @@ namespace System.Net.Http
                     QuicStream stream = await streamTask.ConfigureAwait(false);
 
                     // This process is cleaned up when _connection is disposed, and errors are observed via Abort().
-                    _ = ProcessServerStreamAsync(stream);
+                    await ProcessServerStreamAsync(stream).ConfigureAwait(true);
                 }
             }
             catch (QuicException ex) when (ex.QuicError == QuicError.OperationAborted)
@@ -701,6 +701,8 @@ namespace System.Net.Http
                     }
 
                     buffer.Discard(bytesRead);
+                    Console.Write(settingId);
+                    Console.Write("Hereframes");
 
                     switch ((Http3SettingType)settingId)
                     {
@@ -708,12 +710,18 @@ namespace System.Net.Http
                             _maximumHeadersLength = (int)Math.Min(settingValue, int.MaxValue);
                             break;
                         case Http3SettingType.EnableWebTransport:
+                            Console.Write("Here");
+                            Console.Write((int)settingValue);
+                            Console.Write("Here2");
+
                             // Per https://datatracker.ietf.org/doc/html/draft-ietf-webtrans-http3#section-3.1
                             // an endpoint that receives a value other than "0" or "1" MUST close the
                             // connection with the H3_SETTINGS_ERROR error code.
                             if (settingValue != 0 && settingValue != 1)
                                 throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.SettingsError);
                             _enableWebTransport = (int)settingValue;
+                            Console.Write(EnableWebTransport);
+                            Console.Write(" e finale !!!!!!");
                             break;
                         case Http3SettingType.ReservedHttp2EnablePush:
                         case Http3SettingType.ReservedHttp2MaxConcurrentStreams:

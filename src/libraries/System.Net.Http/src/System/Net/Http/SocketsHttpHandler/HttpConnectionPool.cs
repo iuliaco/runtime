@@ -977,13 +977,17 @@ namespace System.Net.Http
                 }
 
                 Http3Connection connection = await connectionTask.ConfigureAwait(false);
-
+                // todo add await
+                Console.Write("Here testing if con is webtr ok: ");
+                Console.Write(connection.EnableWebTransport + " ");
                 if (request.IsWebTransportH3Request())
                 {
+
                     // since the settings frame is prcessed in the ctor of connection I do not need to await for servers capability to be checked
                     if (connection.EnableWebTransport == 0)
                     {
-                        // talk with Mana about this!!!! nothing specified in the rfc
+                        Console.Write("Aici nu e bine");
+                        //TODO: should create a new exception message - on next steps
                         HttpRequestException exception = new(SR.net_unsupported_extended_connect);
                         exception.Data["SETTINGS_ENABLE_CONNECT_PROTOCOL"] = false;
                         throw exception;
@@ -991,8 +995,8 @@ namespace System.Net.Http
                 }
 
                 HttpResponseMessage response = await connection.SendAsync(request, queueStartingTimestamp, cancellationToken).ConfigureAwait(false);
-
-                if (request.IsWebTransportH3Request())
+                Console.Write(" inside connection pool " + response.StatusCode);
+                /*if (request.IsWebTransportH3Request())
                 {
                     //2XX talk about it
                     if (response.StatusCode == HttpStatusCode.OK || response.StatusCode == HttpStatusCode.Accepted)
@@ -1005,7 +1009,7 @@ namespace System.Net.Http
                         // ????????? dunno bro did not say what happens if server says no thank you
                     }
 
-                }
+                }*/
 
                     // If an Alt-Svc authority returns 421, it means it can't actually handle the request.
                     // An authority is supposed to be able to handle ALL requests to the origin, so this is a server bug.
@@ -1016,6 +1020,7 @@ namespace System.Net.Http
                     BlocklistAuthority(connection.Authority);
                     continue;
                 }
+                Console.Write(" inside connection pool 2 " + response.StatusCode);
 
                 return response;
             }
@@ -1050,6 +1055,8 @@ namespace System.Net.Http
                     {
                         Debug.Assert(async);
                         response = await TrySendUsingHttp3Async(request, cancellationToken).ConfigureAwait(false);
+                        Console.Write(" inside connection pool 3");
+
                     }
 
                     if (response is null)
@@ -1116,6 +1123,8 @@ namespace System.Net.Http
                     }
 
                     ProcessAltSvc(response);
+                    Console.Write(" inside connection pool 4 " + response.StatusCode);
+
                     return response;
                 }
                 catch (HttpRequestException e) when (e.AllowRetry == RequestRetryType.RetryOnConnectionFailure)
