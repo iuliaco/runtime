@@ -23,7 +23,7 @@ namespace System.Net.Http
         private readonly HttpConnectionPool _pool;
         private readonly HttpAuthority? _origin;
         private readonly HttpAuthority _authority;
-        private readonly byte[] _altUsedEncodedHeader;
+        private readonly byte[]? _altUsedEncodedHeader;
         private QuicConnection? _connection;
         private Task? _connectionClosedTask;
 
@@ -55,8 +55,9 @@ namespace System.Net.Http
         public HttpAuthority Authority => _authority;
         public HttpConnectionPool Pool => _pool;
         public int MaximumRequestHeadersLength => _maximumHeadersLength;
+
         public int EnableWebTransport => _enableWebTransport;
-        public byte[] AltUsedEncodedHeaderBytes => _altUsedEncodedHeader;
+        public byte[]? AltUsedEncodedHeaderBytes => _altUsedEncodedHeader;
         public Exception? AbortException => Volatile.Read(ref _abortException);
         private object SyncObj => _activeRequests;
 
@@ -72,16 +73,20 @@ namespace System.Net.Http
             }
         }
 
-        public Http3Connection(HttpConnectionPool pool, HttpAuthority? origin, HttpAuthority authority, QuicConnection connection)
+        public Http3Connection(HttpConnectionPool pool, HttpAuthority? origin, HttpAuthority authority, QuicConnection connection, bool includeAltUsedHeader)
         {
             _pool = pool;
             _origin = origin;
             _authority = authority;
             _connection = connection;
 
-            bool altUsedDefaultPort = pool.Kind == HttpConnectionKind.Http && authority.Port == HttpConnectionPool.DefaultHttpPort || pool.Kind == HttpConnectionKind.Https && authority.Port == HttpConnectionPool.DefaultHttpsPort;
-            string altUsedValue = altUsedDefaultPort ? authority.IdnHost : string.Create(CultureInfo.InvariantCulture, $"{authority.IdnHost}:{authority.Port}");
-            _altUsedEncodedHeader = QPack.QPackEncoder.EncodeLiteralHeaderFieldWithoutNameReferenceToArray(KnownHeaders.AltUsed.Name, altUsedValue);
+            if (includeAltUsedHeader)
+            {
+                bool altUsedDefaultPort = pool.Kind == HttpConnectionKind.Http && authority.Port == HttpConnectionPool.DefaultHttpPort || pool.Kind == HttpConnectionKind.Https && authority.Port == HttpConnectionPool.DefaultHttpsPort;
+                string altUsedValue = altUsedDefaultPort ? authority.IdnHost : string.Create(CultureInfo.InvariantCulture, $"{authority.IdnHost}:{authority.Port}");
+                _altUsedEncodedHeader = QPack.QPackEncoder.EncodeLiteralHeaderFieldWithoutNameReferenceToArray(KnownHeaders.AltUsed.Name, altUsedValue);
+            }
+
 
             if (HttpTelemetry.Log.IsEnabled())
             {
