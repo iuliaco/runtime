@@ -126,7 +126,7 @@ namespace System.Net.Http.Functional.Tests
         [Fact]
         public async Task ClientSettingsWebTransportServerReceived_Success()
         {
-            using var listener = new TestUtilities.TestEventListener(_output, TestUtilities.TestEventListener.NetworkingEvents);
+           // using var listener = new TestUtilities.TestEventListener(_output, TestUtilities.TestEventListener.NetworkingEvents);
 
             Task clientTask = Task.Run(async () =>
             {
@@ -153,8 +153,11 @@ namespace System.Net.Http.Functional.Tests
                 request2.Version = HttpVersion.Version30;
                 request2.VersionPolicy = HttpVersionPolicy.RequestVersionExact;
                 request2.Headers.Protocol = "webtransport";
-                using HttpResponseMessage response2 = await client.SendAsync(true, request2, HttpCompletionOption.ResponseHeadersRead);
+                //using HttpResponseMessage response2 = await client.SendAsync(true, request2, HttpCompletionOption.ResponseHeadersRead);
+                using HttpResponseMessage response2 = await client.SendAsync(request2);
                 Console.Write(response2);
+                var stream = await response2.Content.ReadAsStreamAsync();
+
 
             });
 
@@ -647,7 +650,7 @@ namespace System.Net.Http.Functional.Tests
 
                 var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
                 var stream = await response.Content.ReadAsStreamAsync();
-
+               
                 // We haven't finished sending the whole request, but we're disposing the response, which should turn into an exception on the server-side.
                 response.Dispose();
                 await serverTask;

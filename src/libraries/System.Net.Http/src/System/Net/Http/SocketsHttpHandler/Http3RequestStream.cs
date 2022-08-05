@@ -167,13 +167,10 @@ namespace System.Net.Http
                 {
                     sendContentTask = Task.CompletedTask;
                 }
-                Console.Write("Inside sends before response");
-
                 // In parallel, send content and read response.
                 // Depending on Expect 100 Continue usage, one will depend on the other making progress.
                 Task readResponseTask = ReadResponseAsync(_requestBodyCancellationSource.Token);
                 bool sendContentObserved = false;
-                Console.Write("Inside sends after response");
 
                 // If we're not doing duplex, wait for content to finish sending here.
                 // If we are doing duplex and have the unlikely event that it completes here, observe the result.
@@ -203,7 +200,6 @@ namespace System.Net.Http
                     // Do a background await to log any exceptions.
                     _connection.LogExceptions(sendContentTask);
                 }
-                Console.Write(" Inside sends after response2 ");
 
                 // Wait for the response headers to be read.
                 await readResponseTask.ConfigureAwait(false);
@@ -211,7 +207,6 @@ namespace System.Net.Http
                 Debug.Assert(_response != null && _response.Content != null);
                 // Set our content stream.
                 var responseContent = (HttpConnectionResponseContent)_response.Content;
-                Console.Write(" Inside sends after response3 ");
 
                 // If we have received Content-Length: 0 and have completed sending content (which may not be the case if duplex),
                 // we can close our Http3RequestStream immediately and return a singleton empty content stream. Otherwise, we
@@ -222,16 +217,12 @@ namespace System.Net.Http
                     // Drain the response frames to read any trailing headers.
                     await DrainContentLength0Frames(_requestBodyCancellationSource.Token).ConfigureAwait(false);
                     responseContent.SetStream(EmptyReadStream.Instance);
-                    Console.Write("   intru si null?????    ");
-
                 }
                 else
                 {
                     // A read stream is required to finish up the request.
                     responseContent.SetStream(new Http3ReadStream(this));
-                    Console.Write("   intru si wow la req str");
                 }
-                Console.Write(" Inside sends after response4 ");
 
                 if (NetEventSource.Log.IsEnabled()) Trace($"Received response: {_response}");
 
@@ -240,7 +231,6 @@ namespace System.Net.Http
                 {
                     CookieHelper.ProcessReceivedCookies(_response, _connection.Pool.Settings._cookieContainer!);
                 }
-                Console.Write(" Inside sends after response5 ");
 
                 // To avoid a circular reference (stream->response->content->stream), null out the stream's response.
                 HttpResponseMessage response = _response;
@@ -248,7 +238,6 @@ namespace System.Net.Http
 
                 // If we're 100% done with the stream, dispose.
                 disposeSelf = useEmptyResponseContent;
-                Console.Write(" Inside sends after response6 ");
 
                 // Success, don't cancel the body.
                 shouldCancelBody = false;
@@ -622,7 +611,7 @@ namespace System.Net.Http
 
             if(request.IsWebTransportH3Request())
             {
-                BufferLiteralHeaderWithoutNameReference("Sec-Webtransport-Http3-Draft02", "1", null);
+                BufferLiteralHeaderWithoutNameReference(Http3WebtransportSession.CurrentSuppportedVersion, "1", null);
             }
 
             if (_connection.Pool.Settings._useCookies)

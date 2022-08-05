@@ -40,6 +40,8 @@ namespace System.Net.Http
         private int _maximumHeadersLength = int.MaxValue; // TODO: this is not yet observed by Http3Stream when buffering headers.
         private int _enableWebTransport; // by default setted with 0
 
+        private Http3WebtransportManager? WTManager;
+
         // Once the server's streams are received, these are set to 1. Further receipt of these streams results in a connection error.
         private int _haveServerControlStream;
         private int _haveServerQpackDecodeStream;
@@ -54,6 +56,9 @@ namespace System.Net.Http
 
         public HttpAuthority Authority => _authority;
         public HttpConnectionPool Pool => _pool;
+        // sadly I do not know how to acces it otherwise
+        public QuicConnection? QuicConnection => _connection;
+
         public int MaximumRequestHeadersLength => _maximumHeadersLength;
 
         public int EnableWebTransport => _enableWebTransport;
@@ -234,8 +239,36 @@ namespace System.Net.Http
 
                 Task<HttpResponseMessage> responseTask = requestStream.SendAsync(cancellationToken);
 
+                if (request.IsWebTransportH3Request())
+                {
+                    var response = await responseTask.ConfigureAwait(false);
+                    //2XX talk about it - found solution not yet places
+                    if (response.StatusCode == HttpStatusCode.OK || response.StatusCode == HttpStatusCode.Accepted)
+                    {
+                        // also should I have a variable to show that I am currenytly in a webtransport session?
+                        bool newWTSession = WTManager!.addSession(requestStream);
+                        if(newWTSession)
+                        {
+                            await WTManager.OpenUnidirectionalStreamAsync(requestStream.StreamId).ConfigureAwait(false);
+                            await WTManager.OpenUnidirectionalStreamAsync(requestStream.StreamId).ConfigureAwait(false);
+                            await WTManager.OpenUnidirectionalStreamAsync(requestStream.StreamId).ConfigureAwait(false);
+                            await WTManager.OpenUnidirectionalStreamAsync(requestStream.StreamId).ConfigureAwait(false);
+                            requestStream = null;
+                            return response;
+                        }
+
+                    }
+                    else
+                    {
+                        // ????????? dunno bro did not say what happens if server says no thank you
+                    }
+
+                }
+
                 // null out requestStream to avoid disposing in finally block. It is now in charge of disposing itself.
                 requestStream = null;
+
+
 
                 return await responseTask.ConfigureAwait(false);
             }
@@ -706,8 +739,6 @@ namespace System.Net.Http
                     }
 
                     buffer.Discard(bytesRead);
-                    Console.Write(settingId);
-                    Console.Write("Hereframes");
 
                     switch ((Http3SettingType)settingId)
                     {
@@ -715,9 +746,6 @@ namespace System.Net.Http
                             _maximumHeadersLength = (int)Math.Min(settingValue, int.MaxValue);
                             break;
                         case Http3SettingType.EnableWebTransport:
-                            Console.Write("Here");
-                            Console.Write((int)settingValue);
-                            Console.Write("Here2");
 
                             // Per https://datatracker.ietf.org/doc/html/draft-ietf-webtrans-http3#section-3.1
                             // an endpoint that receives a value other than "0" or "1" MUST close the
@@ -725,8 +753,7 @@ namespace System.Net.Http
                             if (settingValue != 0 && settingValue != 1)
                                 throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.SettingsError);
                             _enableWebTransport = (int)settingValue;
-                            Console.Write(EnableWebTransport);
-                            Console.Write(" e finale !!!!!!");
+                            WTManager = new Http3WebtransportManager(this);
                             break;
                         case Http3SettingType.ReservedHttp2EnablePush:
                         case Http3SettingType.ReservedHttp2MaxConcurrentStreams:
