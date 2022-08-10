@@ -243,16 +243,16 @@ namespace System.Net.Http
                 {
                     var response = await responseTask.ConfigureAwait(false);
                     //2XX talk about it - found solution not yet places
-                    if (response.StatusCode == HttpStatusCode.OK || response.StatusCode == HttpStatusCode.Accepted)
+                    if (response.IsSuccessStatusCode)
                     {
-                        // also should I have a variable to show that I am currenytly in a webtransport session?
+                        Console.Write("Test ajung aici ?????????");
+
                         bool newWTSession = WTManager!.addSession(requestStream);
                         if(newWTSession)
                         {
                             await WTManager.OpenUnidirectionalStreamAsync(requestStream.StreamId).ConfigureAwait(false);
-                            await WTManager.OpenUnidirectionalStreamAsync(requestStream.StreamId).ConfigureAwait(false);
-                            await WTManager.OpenUnidirectionalStreamAsync(requestStream.StreamId).ConfigureAwait(false);
-                            await WTManager.OpenUnidirectionalStreamAsync(requestStream.StreamId).ConfigureAwait(false);
+                            await WTManager.OpenBidirectionalStreamAsync(requestStream.StreamId).ConfigureAwait(false);
+
                             requestStream = null;
                             return response;
                         }
@@ -260,7 +260,7 @@ namespace System.Net.Http
                     }
                     else
                     {
-                        // ????????? dunno bro did not say what happens if server says no thank you
+                        // the rfc does not specify what should be done if the server refuses a webtrans connect request
                     }
 
                 }
@@ -454,9 +454,9 @@ namespace System.Net.Http
                     }
 
                     QuicStream stream = await streamTask.ConfigureAwait(false);
-
+                    Console.Write("Test ?????????");
                     // This process is cleaned up when _connection is disposed, and errors are observed via Abort().
-                    await ProcessServerStreamAsync(stream).ConfigureAwait(true);
+                    _ = ProcessServerStreamAsync(stream);
                 }
             }
             catch (QuicException ex) when (ex.QuicError == QuicError.OperationAborted)
@@ -487,11 +487,6 @@ namespace System.Net.Http
             {
                 await using (stream.ConfigureAwait(false))
                 {
-                    if (stream.CanWrite)
-                    {
-                        // Server initiated bidirectional streams are either push streams or extensions, and we support neither.
-                        throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.StreamCreationError);
-                    }
 
                     buffer = new ArrayBuffer(initialSize: 32, usePool: true);
 
@@ -517,9 +512,27 @@ namespace System.Net.Http
                     }
 
                     buffer.Commit(bytesRead);
+                    long streamType;
+                    VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan, out streamType, out bytesRead);
+                    Console.Write("PRIMESC STREAM DE LA SERVER     " + streamType + " lol");
+                    if (stream.CanWrite)
+                    {
+                        Console.Write("Can I write??");
+                        if (EnableWebTransport == 1)
+                        {
+                            if(streamType == (long)Http3StreamType.WebTransportBidirectional)
+                            {
+                                Console.Write("Catched it nailed it bidir stream");
+                                return;
+                            }
+                        }
+                        // Server initiated bidirectional streams are either push streams or extensions, and we support neither.
+                        throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.StreamCreationError);
 
+                        }
+                    Console.Write("EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE       " + streamType);
                     // Stream type is a variable-length integer, but we only check the first byte. There is no known type requiring more than 1 byte.
-                    switch (buffer.ActiveSpan[0])
+                    switch (streamType)
                     {
                         case (byte)Http3StreamType.Control:
                             if (Interlocked.Exchange(ref _haveServerControlStream, 1) != 0)
@@ -564,6 +577,14 @@ namespace System.Net.Http
                             // We don't support push streams.
                             // Because no maximum push stream ID was negotiated via a MAX_PUSH_ID frame, server should not have sent this. Abort the connection with H3_ID_ERROR.
                             throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.IdError);
+                        case (long)Http3StreamType.WebTransportUnidirectional:
+                            long newVar;
+                            VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan.Slice(bytesRead), out newVar, out bytesRead);
+                            buffer.Commit(bytesRead);
+                            Console.Write("AM PRIMIT ID " + newVar);
+                            WTManager!.AcceptServerStream(stream, newVar);
+                            return;
+                            //throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.IdError);
                         default:
                             // Unknown stream type. Per spec, these must be ignored and aborted but not be considered a connection-level error.
 

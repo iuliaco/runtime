@@ -27,6 +27,9 @@ namespace System.Net.Test.Common
 
         public const long ControlStream = 0x0;
         public const long PushStream = 0x1;
+        public const long UniWTStream = 0x54;
+        public const long BiWTStream = 0x41;
+
 
         public const long MaxHeaderListSize = 0x6;
         public const long EnableWebTransport = 0x2b603742;
@@ -56,6 +59,15 @@ namespace System.Net.Test.Common
         {
             var buffer = new byte[MaximumVarIntBytes];
             int bytesWritten = EncodeHttpInteger(streamType, buffer);
+            await _stream.WriteAsync(buffer.AsMemory(0, bytesWritten)).ConfigureAwait(false);
+        }
+
+        public async Task SendWTStreamHeaderAsync(long streamType, long? sessionId)
+        {
+            long sessionIds = sessionId ?? 0;
+            var buffer = new byte[MaximumVarIntBytes];
+            int bytesWritten = EncodeHttpInteger(streamType, buffer);
+            bytesWritten += EncodeHttpInteger(sessionIds, buffer.AsSpan(bytesWritten));
             await _stream.WriteAsync(buffer.AsMemory(0, bytesWritten)).ConfigureAwait(false);
         }
 
@@ -448,6 +460,18 @@ namespace System.Net.Test.Common
             }
 
             return (frameType, payload);
+        }
+
+        public async Task<(long? frameType, long? session)> ReadWTFrameAsync()
+        {
+            long? frameType = await ReadIntegerAsync().ConfigureAwait(false);
+            Console.WriteLine(frameType);
+            if (frameType == null) return (null, null);
+
+            long? session = await ReadIntegerAsync().ConfigureAwait(false);
+            if (session == null) throw new Exception("Unable to read session; unexpected end of stream.");
+
+            return (frameType, session);
         }
 
         public async Task<long?> ReadIntegerAsync()

@@ -104,19 +104,36 @@ namespace System.Net.Http.Functional.Tests
                     await requestStream.ReadRequestDataAsync();
                     await requestStream.SendResponseAsync();
                 }
+                await using Http3LoopbackStream stream = await connection.AcceptRequestStreamAsync();
+                await stream.HandleRequestAsync();
+                var wtstr = await connection.AcceptWebtransportStreamAsync();
+                (long? frameType, long? sessionId) = await wtstr.ReadWTFrameAsync();
+                Console.Write("OOOO " + sessionId + " "+ stream.StreamId);
+
+                var wtstrbi = await connection.AcceptWebtransportStreamAsync();
+                (long? frameType2, long? sessionId2) = await wtstrbi.ReadWTFrameAsync();
+                Console.Write("OOOO " + sessionId2 + " " + stream.StreamId);
+                await connection.SendUnidirectionalWTStreamAsync(sessionId);
+               // await connection.SendBidirectionalWTStreamAsync(sessionId);
             });
 
             Task clientTask = Task.Run(async () =>
             {
                 using HttpClient client = CreateHttpClient();
-                using HttpRequestMessage request = new()
+                using HttpRequestMessage request2 = new()
                 {
                     Method = HttpMethod.Get,
-                    RequestUri = server.Address,
+                    RequestUri =server.Address,
                     Version = HttpVersion30,
                     VersionPolicy = HttpVersionPolicy.RequestVersionExact
                 };
+                using HttpResponseMessage response2 = await client.SendAsync(request2);
+                HttpRequestMessage request = new(HttpMethod.Connect, server.Address);
+                request.Version = HttpVersion.Version30;
+                request.VersionPolicy = HttpVersionPolicy.RequestVersionExact;
+                request.Headers.Protocol = "webtransport";
                 using HttpResponseMessage response = await client.SendAsync(request);
+                Console.Write(response);
                 
             });
 
@@ -153,11 +170,11 @@ namespace System.Net.Http.Functional.Tests
                 request2.Version = HttpVersion.Version30;
                 request2.VersionPolicy = HttpVersionPolicy.RequestVersionExact;
                 request2.Headers.Protocol = "webtransport";
-                //using HttpResponseMessage response2 = await client.SendAsync(true, request2, HttpCompletionOption.ResponseHeadersRead);
-                using HttpResponseMessage response2 = await client.SendAsync(request2);
-                Console.Write(response2);
-                var stream = await response2.Content.ReadAsStreamAsync();
+                using HttpResponseMessage response2 = await client.SendAsync(true, request2, HttpCompletionOption.ResponseHeadersRead);
+                //using HttpResponseMessage response2 = await client.SendAsync(request2);
+                
 
+                await Task.Delay(10_000);
 
             });
 

@@ -37,7 +37,19 @@ namespace System.Net.Http
             return _sessions.TryAdd(connectStream.StreamId, new Http3WebtransportSession(connectStream));
         }
 
+        public bool AcceptServerStream(QuicStream stream, long sessionId)
+        {
+            Http3WebtransportSession? session;
+            _sessions.TryGetValue(sessionId, out session);
+            // if no session with that id exists throw exception
+            // https://datatracker.ietf.org/doc/html/draft-ietf-webtrans-http3#section-4
+            if (session == null)
+            {
+                throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.IdError);
+            }
+            return session.AcceptServerStream(stream);
 
+        }
 
         public async ValueTask<bool> OpenUnidirectionalStreamAsync(long sessionId)
         {
@@ -50,6 +62,20 @@ namespace System.Net.Http
                 throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.IdError);
             }
             return await session.OpenUnidirectionalStreamAsync(_connection).ConfigureAwait(false);
+
+        }
+
+        public async ValueTask<bool> OpenBidirectionalStreamAsync(long sessionId)
+        {
+            Http3WebtransportSession? session;
+            _sessions.TryGetValue(sessionId, out session);
+            // if no session with that id exists throw exception
+            // https://datatracker.ietf.org/doc/html/draft-ietf-webtrans-http3#section-4
+            if (session == null)
+            {
+                throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.IdError);
+            }
+            return await session.OpenBidirectionalStreamAsync(_connection).ConfigureAwait(false);
 
         }
 
