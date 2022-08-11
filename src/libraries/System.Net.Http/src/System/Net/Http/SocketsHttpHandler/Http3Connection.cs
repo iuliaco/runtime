@@ -48,9 +48,6 @@ namespace System.Net.Http
         private int _haveServerQpackDecodeStream;
         private int _haveServerQpackEncodeStream;
 
-        private ManualResetEventSlim settingsFrameReceived = new ManualResetEventSlim(false); // initialize as unsignaled
-
-
         // A connection-level error will abort any future operations.
         private Exception? _abortException;
 
@@ -169,7 +166,6 @@ namespace System.Net.Http
                         _clientControl.Dispose();
                         _clientControl = null;
                     }
-                    settingsFrameReceived.Dispose();
 
                 }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
 
@@ -192,7 +188,6 @@ namespace System.Net.Http
             // todo add await
             if (request.IsWebTransportH3Request())
             {
-                settingsFrameReceived.Wait(cancellationToken);
                 if (EnableWebTransport == 0)
                 {
                     //TODO: should create a new exception message - on next steps
@@ -672,7 +667,6 @@ namespace System.Net.Http
 
                 await ProcessSettingsFrameAsync(payloadLength).ConfigureAwait(false);
 
-                settingsFrameReceived.Set();
                 // Read subsequent frames.
 
                 while (true)

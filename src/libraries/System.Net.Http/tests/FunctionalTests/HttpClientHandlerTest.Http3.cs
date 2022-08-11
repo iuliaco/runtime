@@ -96,17 +96,18 @@ namespace System.Net.Http.Functional.Tests
                 settings.Add((Http3LoopbackStream.EnableWebTransport, 1));
                 await using Http3LoopbackConnection connection = (Http3LoopbackConnection)await server.EstablishSettingsFrameGenericConnectionAsync(settings);
 
-                (Http3LoopbackStream settingsStream, Http3LoopbackStream stream) = await connection.AcceptControlAndRequestStreamAsync();
+                (Http3LoopbackStream settingsStream, Http3LoopbackStream requestStream) = await connection.AcceptControlAndRequestStreamAsync();
 
                 await using (settingsStream)
-                await using (stream)
+                await using (requestStream)
                 {
                     Assert.Equal(1, connection.EnableWebtransport);
-                    await stream.ReadRequestDataAsync();
-                    await stream.SendResponseAsync();
+                    await requestStream.ReadRequestDataAsync();
+                    await requestStream.SendResponseAsync();
                 }
-                /*await using Http3LoopbackStream stream = await connection.AcceptRequestStreamAsync();
-                await stream.HandleRequestAsync();*/
+
+                await using Http3LoopbackStream stream = await connection.AcceptRequestStreamAsync();
+                await stream.HandleRequestAsync();
                 var wtClientUnidirectionalStream = await connection.AcceptWebtransportStreamAsync();
                 (long? frameType, long? sessionId) = await wtClientUnidirectionalStream.ReadWTFrameAsync();
                 Console.Write("OOOO " + sessionId + " "+ stream.StreamId);
@@ -134,6 +135,14 @@ namespace System.Net.Http.Functional.Tests
             Task clientTask = Task.Run(async () =>
             {
                 using HttpClient client = CreateHttpClient();
+                using HttpRequestMessage request2 = new()
+                {
+                    Method = HttpMethod.Get,
+                    RequestUri = server.Address,
+                    Version = HttpVersion30,
+                    VersionPolicy = HttpVersionPolicy.RequestVersionExact
+                };
+                using HttpResponseMessage response2 = await client.SendAsync(request2);
                 HttpRequestMessage request = new(HttpMethod.Connect, server.Address);
                 request.Version = HttpVersion.Version30;
                 request.VersionPolicy = HttpVersionPolicy.RequestVersionExact;
