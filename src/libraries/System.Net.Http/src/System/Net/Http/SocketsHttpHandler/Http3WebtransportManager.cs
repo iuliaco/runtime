@@ -51,7 +51,7 @@ namespace System.Net.Http
 
         }
 
-        public async ValueTask<bool> OpenUnidirectionalStreamAsync(long sessionId)
+        public async ValueTask<QuicStream?> OpenUnidirectionalStreamAsync(long sessionId)
         {
             Http3WebtransportSession? session;
             _sessions.TryGetValue(sessionId, out session);
@@ -65,7 +65,7 @@ namespace System.Net.Http
 
         }
 
-        public async ValueTask<bool> OpenBidirectionalStreamAsync(long sessionId)
+        public async ValueTask<QuicStream?> OpenBidirectionalStreamAsync(long sessionId)
         {
             Http3WebtransportSession? session;
             _sessions.TryGetValue(sessionId, out session);

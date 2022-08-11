@@ -216,17 +216,17 @@ namespace System.Net.Test.Common
             await _outboundControlStream.SendSettingsFrameAsync(settings);
         }
 
-        public async Task SendUnidirectionalWTStreamAsync(long? sessionId)
+        public async Task<Http3LoopbackStream> OpenUnidirectionalWTStreamAsync(long? sessionId)
         {
             Http3LoopbackStream wtStream = await OpenUnidirectionalStreamAsync();
             await wtStream.SendWTStreamHeaderAsync(Http3LoopbackStream.UniWTStream, sessionId);
-           
+            return wtStream;
         }
-        public async Task SendBidirectionalWTStreamAsync(long? sessionId)
+        public async Task<Http3LoopbackStream> OpenBidirectionalWTStreamAsync(long? sessionId)
         {
             Http3LoopbackStream wtStream = await OpenBidirectionalStreamAsync();
             await wtStream.SendWTStreamHeaderAsync(Http3LoopbackStream.BiWTStream, sessionId);
-
+            return wtStream;
         }
 
         public override async Task<byte[]> ReadRequestBodyAsync()

@@ -977,18 +977,6 @@ namespace System.Net.Http
                 }
 
                 Http3Connection connection = await connectionTask.ConfigureAwait(false);
-                // todo add await
-                if (request.IsWebTransportH3Request())
-                {
-
-                    // since the settings frame is prcessed in the ctor of connection I do not need to await for servers capability to be checked
-                    if (connection.EnableWebTransport == 0)
-                    {
-                        //TODO: should create a new exception message - on next steps
-                        HttpRequestException exception = new(SR.net_unsupported_extended_connect);
-                        throw exception;
-                    }
-                }
 
                 HttpResponseMessage response = await connection.SendAsync(request, queueStartingTimestamp, cancellationToken).ConfigureAwait(false);
 

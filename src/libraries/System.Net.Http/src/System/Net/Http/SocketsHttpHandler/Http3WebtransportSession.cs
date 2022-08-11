@@ -28,11 +28,6 @@ namespace System.Net.Http
 
         private ConcurrentDictionary<long, QuicStream> _streams;
 
-        /*private static readonly ReadOnlyMemory<byte> OutputStreamHeader = new(new byte[] {
-            0x40 *//*quic variable-length integer length*//*,
-            (byte)Http3StreamType.WebTransportUnidirectional,
-            0x00 *//*body*//*});*/
-
         internal const string WebTransportProtocolValue = "webtransport";
         internal const string VersionEnabledIndicator = "1";
         internal const string SecPrefix = "sec-webtransport-http3-";
@@ -48,7 +43,7 @@ namespace System.Net.Http
 
         internal bool AcceptServerStream(QuicStream stream) => _streams.TryAdd(stream.Id, stream);
 
-        public async ValueTask<bool> OpenUnidirectionalStreamAsync(Http3Connection connection)
+        public async ValueTask<QuicStream?> OpenUnidirectionalStreamAsync(Http3Connection connection)
         {
             QuicStream clientWTStream;
             try
@@ -58,35 +53,32 @@ namespace System.Net.Http
 
                 bool addStream = _streams.TryAdd(clientWTStream.Id, clientWTStream);
                 if (!addStream)
-                    return false;
+                    return null;
                 await clientWTStream.WriteAsync(BuildUnidirectionalClientFrame(), CancellationToken.None).ConfigureAwait(false);
-                return true;
+                return clientWTStream;
 
             }
             catch (Exception)
             {
-                return false;
+                return null;
             }
         }
 
-        public async ValueTask<bool> OpenBidirectionalStreamAsync(Http3Connection connection)
+        public async ValueTask<QuicStream?> OpenBidirectionalStreamAsync(Http3Connection connection)
         {
             QuicStream clientWTStream;
             try
             {
                 clientWTStream = await connection.QuicConnection!.OpenOutboundStreamAsync(QuicStreamType.Bidirectional).ConfigureAwait(false);
-                //await clientWTStream.WriteAsync(OutputStreamHeader, CancellationToken.None).ConfigureAwait(false);
-
                 bool addStream = _streams.TryAdd(clientWTStream.Id, clientWTStream);
                 if (!addStream)
-                    return false;
+                    return null;
                 await clientWTStream.WriteAsync(BuildBidirectionalClientFrame(), CancellationToken.None).ConfigureAwait(false);
-                return true;
-
+                return clientWTStream;
             }
             catch (Exception)
             {
-                return false;
+                return null;
             }
         }
 

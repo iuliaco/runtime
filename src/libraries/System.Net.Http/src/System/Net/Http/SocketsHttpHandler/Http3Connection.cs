@@ -12,6 +12,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Net.Http.Headers;
 using System.Net.Security;
+using System.Text;
 
 namespace System.Net.Http
 {
@@ -46,6 +47,9 @@ namespace System.Net.Http
         private int _haveServerControlStream;
         private int _haveServerQpackDecodeStream;
         private int _haveServerQpackEncodeStream;
+
+        private ManualResetEventSlim settingsFrameReceived = new ManualResetEventSlim(false); // initialize as unsignaled
+
 
         // A connection-level error will abort any future operations.
         private Exception? _abortException;
@@ -165,6 +169,7 @@ namespace System.Net.Http
                         _clientControl.Dispose();
                         _clientControl = null;
                     }
+                    settingsFrameReceived.Dispose();
 
                 }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
 
@@ -183,6 +188,18 @@ namespace System.Net.Http
             // Allocate an active request
             QuicStream? quicStream = null;
             Http3RequestStream? requestStream = null;
+
+            // todo add await
+            if (request.IsWebTransportH3Request())
+            {
+                settingsFrameReceived.Wait(cancellationToken);
+                if (EnableWebTransport == 0)
+                {
+                    //TODO: should create a new exception message - on next steps
+                    HttpRequestException exception = new(SR.net_unsupported_extended_connect);
+                    throw exception;
+                }
+            }
 
             try
             {
@@ -242,17 +259,22 @@ namespace System.Net.Http
                 if (request.IsWebTransportH3Request())
                 {
                     var response = await responseTask.ConfigureAwait(false);
-                    //2XX talk about it - found solution not yet places
                     if (response.IsSuccessStatusCode)
                     {
-                        Console.Write("Test ajung aici ?????????");
-
                         bool newWTSession = WTManager!.addSession(requestStream);
                         if(newWTSession)
                         {
-                            await WTManager.OpenUnidirectionalStreamAsync(requestStream.StreamId).ConfigureAwait(false);
-                            await WTManager.OpenBidirectionalStreamAsync(requestStream.StreamId).ConfigureAwait(false);
-
+                            QuicStream? uniWTStream = await WTManager.OpenUnidirectionalStreamAsync(requestStream.StreamId).ConfigureAwait(false);
+                            QuicStream? biWTStream = await WTManager.OpenBidirectionalStreamAsync(requestStream.StreamId).ConfigureAwait(false);
+                            string s = "Ana are mere";
+                            byte[] bytes = Encoding.ASCII.GetBytes(s);
+                            await uniWTStream!.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
+                            s = "Ana n are mere";
+                            bytes = Encoding.ASCII.GetBytes(s);
+                            await biWTStream!.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
+                            byte[] bytes2 = new byte[1000];
+                            await biWTStream.ReadAsync(bytes2, cancellationToken).ConfigureAwait(false);
+                            Console.Write("here it starts :" + Encoding.ASCII.GetString(bytes2));
                             requestStream = null;
                             return response;
                         }
@@ -454,7 +476,6 @@ namespace System.Net.Http
                     }
 
                     QuicStream stream = await streamTask.ConfigureAwait(false);
-                    Console.Write("Test ?????????");
                     // This process is cleaned up when _connection is disposed, and errors are observed via Abort().
                     _ = ProcessServerStreamAsync(stream);
                 }
@@ -514,15 +535,17 @@ namespace System.Net.Http
                     buffer.Commit(bytesRead);
                     long streamType;
                     VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan, out streamType, out bytesRead);
-                    Console.Write("PRIMESC STREAM DE LA SERVER     " + streamType + " lol");
                     if (stream.CanWrite)
                     {
-                        Console.Write("Can I write??");
                         if (EnableWebTransport == 1)
                         {
                             if(streamType == (long)Http3StreamType.WebTransportBidirectional)
                             {
                                 Console.Write("Catched it nailed it bidir stream");
+                                long sessionId;
+                                VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan.Slice(bytesRead), out sessionId, out bytesRead);
+                                buffer.Commit(bytesRead);
+                                WTManager!.AcceptServerStream(stream, sessionId);
                                 return;
                             }
                         }
@@ -530,7 +553,6 @@ namespace System.Net.Http
                         throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.StreamCreationError);
 
                         }
-                    Console.Write("EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE       " + streamType);
                     // Stream type is a variable-length integer, but we only check the first byte. There is no known type requiring more than 1 byte.
                     switch (streamType)
                     {
@@ -578,11 +600,10 @@ namespace System.Net.Http
                             // Because no maximum push stream ID was negotiated via a MAX_PUSH_ID frame, server should not have sent this. Abort the connection with H3_ID_ERROR.
                             throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.IdError);
                         case (long)Http3StreamType.WebTransportUnidirectional:
-                            long newVar;
-                            VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan.Slice(bytesRead), out newVar, out bytesRead);
+                            long sessionId;
+                            VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan.Slice(bytesRead), out sessionId, out bytesRead);
                             buffer.Commit(bytesRead);
-                            Console.Write("AM PRIMIT ID " + newVar);
-                            WTManager!.AcceptServerStream(stream, newVar);
+                            WTManager!.AcceptServerStream(stream, sessionId);
                             return;
                             //throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.IdError);
                         default:
@@ -651,6 +672,7 @@ namespace System.Net.Http
 
                 await ProcessSettingsFrameAsync(payloadLength).ConfigureAwait(false);
 
+                settingsFrameReceived.Set();
                 // Read subsequent frames.
 
                 while (true)
