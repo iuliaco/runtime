@@ -40,6 +40,8 @@ namespace System.Net.Http
         // Current SETTINGS from the server.
         private int _maximumHeadersLength = int.MaxValue; // TODO: this is not yet observed by Http3Stream when buffering headers.
         private int _enableWebTransport; // by default setted with 0
+        private TaskCompletionSource<bool>? _expectedSettingsFrameProcessed; // True indicates we should send content (e.g. received 100 Continue).
+
 
         private Http3WebtransportManager? WTManager;
 
@@ -99,6 +101,8 @@ namespace System.Net.Http
                 HttpTelemetry.Log.Http30ConnectionEstablished();
                 _markedByTelemetryStatus = TelemetryStatus_Opened;
             }
+
+            _expectedSettingsFrameProcessed = new TaskCompletionSource<bool>();
 
             // Errors are observed via Abort().
             _ = SendSettingsAsync();
@@ -188,6 +192,7 @@ namespace System.Net.Http
             // todo add await
             if (request.IsWebTransportH3Request())
             {
+                await _expectedSettingsFrameProcessed!.Task.ConfigureAwait(false);
                 if (EnableWebTransport == 0)
                 {
                     //TODO: should create a new exception message - on next steps
@@ -257,7 +262,7 @@ namespace System.Net.Http
                     if (response.IsSuccessStatusCode)
                     {
                         bool newWTSession = WTManager!.addSession(requestStream);
-                        if(newWTSession)
+                        /*if(newWTSession)
                         {
                             QuicStream? uniWTStream = await WTManager.OpenUnidirectionalStreamAsync(requestStream.StreamId).ConfigureAwait(false);
                             QuicStream? biWTStream = await WTManager.OpenBidirectionalStreamAsync(requestStream.StreamId).ConfigureAwait(false);
@@ -272,7 +277,7 @@ namespace System.Net.Http
                             Console.Write("here it starts :" + Encoding.ASCII.GetString(bytes2));
                             requestStream = null;
                             return response;
-                        }
+                        }*/
 
                     }
                     else
@@ -801,6 +806,7 @@ namespace System.Net.Http
                             throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.SettingsError);
                     }
                 }
+                _expectedSettingsFrameProcessed!.TrySetResult(true);
             }
 
             async ValueTask ProcessGoAwayFrameAsync(long goawayPayloadLength)
