@@ -261,28 +261,38 @@ namespace System.Net.Http
                     var response = await responseTask.ConfigureAwait(false);
                     if (response.IsSuccessStatusCode)
                     {
-                        bool newWTSession = WTManager!.addSession(requestStream);
-                        /*if(newWTSession)
+                        if (response.Headers.Contains(Http3WebtransportSession.CurrentSuppportedVersion))
                         {
-                            QuicStream? uniWTStream = await WTManager.OpenUnidirectionalStreamAsync(requestStream.StreamId).ConfigureAwait(false);
-                            QuicStream? biWTStream = await WTManager.OpenBidirectionalStreamAsync(requestStream.StreamId).ConfigureAwait(false);
-                            string s = "Ana are mere";
-                            byte[] bytes = Encoding.ASCII.GetBytes(s);
-                            await uniWTStream!.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
-                            s = "Ana n are mere";
-                            bytes = Encoding.ASCII.GetBytes(s);
-                            await biWTStream!.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
-                            byte[] bytes2 = new byte[1000];
-                            await biWTStream.ReadAsync(bytes2, cancellationToken).ConfigureAwait(false);
-                            Console.Write("here it starts :" + Encoding.ASCII.GetString(bytes2));
-                            requestStream = null;
-                            return response;
-                        }*/
+                            bool newWTSession = WTManager!.addSession(requestStream);
+                            if(newWTSession)
+                            {
+                                QuicStream? uniWTStream = await WTManager.OpenUnidirectionalStreamAsync(requestStream.StreamId).ConfigureAwait(false);
+                                QuicStream? biWTStream = await WTManager.OpenBidirectionalStreamAsync(requestStream.StreamId).ConfigureAwait(false);
+                                string s = "Ana are mere";
+                                byte[] bytes = Encoding.ASCII.GetBytes(s);
+                                await uniWTStream!.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
+                                s = "Ana n are mere";
+                                bytes = Encoding.ASCII.GetBytes(s);
+                                await biWTStream!.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
+                                byte[] bytes2 = new byte[1000];
+                                await biWTStream.ReadAsync(bytes2, cancellationToken).ConfigureAwait(false);
+                                Console.Write("here it starts :" + Encoding.ASCII.GetString(bytes2));
+                                requestStream = null;
+                                return response;
+                            }
+                        }
+                        else
+                        {
+                            HttpRequestException exception = new(SR.net_unsupported_extended_connect);
+                            throw exception;
+                        }
 
                     }
                     else
                     {
                         // the rfc does not specify what should be done if the server refuses a webtrans connect request
+                        HttpRequestException exception = new(SR.net_unsupported_extended_connect);
+                        throw exception;
                     }
 
                 }

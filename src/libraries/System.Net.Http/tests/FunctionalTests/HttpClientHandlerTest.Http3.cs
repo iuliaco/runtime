@@ -160,6 +160,13 @@ namespace System.Net.Http.Functional.Tests
         {
             using Http3LoopbackServer server = CreateHttp3LoopbackServer();
 
+            var headers = new List<HttpHeaderData>();
+            int contentLength = 2 * 1024 * 1024;
+            HttpHeaderData header = new HttpHeaderData("Sec-Webtransport-Http3-Draft02", "");
+            headers.Add(new HttpHeaderData("Content-Length", contentLength.ToString(CultureInfo.InvariantCulture)));
+            headers.Add(header);
+            headers.Append(header);
+            Console.WriteLine("WTFFFF " + headers.Count + " " + header);
             Task serverTask = Task.Run(async () =>
             {
                 // full client check
@@ -168,19 +175,22 @@ namespace System.Net.Http.Functional.Tests
                 await using Http3LoopbackConnection connection = (Http3LoopbackConnection)await server.EstablishSettingsFrameGenericConnectionAsync(settings);
 
                 (Http3LoopbackStream settingsStream, Http3LoopbackStream stream) = await connection.AcceptControlAndRequestStreamAsync();
-
+                
                 await using (settingsStream)
                 await using (stream)
                 {
                     Assert.Equal(1, connection.EnableWebtransport);
-                    await stream.ReadRequestDataAsync();
-                    await stream.SendResponseAsync();
+                    var requestData = await stream.ReadRequestDataAsync();
+                    Console.Write(requestData);
+                    Assert.Equal(1, requestData.GetHeaderValueCount("sec-webtransport-http3-draft02"));
+                    Assert.Equal("1", requestData.GetSingleHeaderValue("sec-webtransport-http3-draft02"));
+                    await stream.SendResponseAsync(HttpStatusCode.OK, headers);
                 }
 
                 await using Http3LoopbackStream stream2 = await connection.AcceptRequestStreamAsync();
-                await stream2.HandleRequestAsync();
+                await stream2.HandleRequestAsync(HttpStatusCode.OK, headers);
                 await using Http3LoopbackStream stream3 = await connection.AcceptRequestStreamAsync();
-                await stream3.HandleRequestAsync();
+                await stream3.HandleRequestAsync(HttpStatusCode.OK, headers);
                 /*var wtClientUnidirectionalStream = await connection.AcceptWebtransportStreamAsync();
                 (long? frameType, long? sessionId) = await wtClientUnidirectionalStream.ReadWTFrameAsync();
                 Console.Write("OOOO " + sessionId + " " + stream.StreamId);

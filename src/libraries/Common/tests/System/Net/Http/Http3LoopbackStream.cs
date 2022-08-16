@@ -264,12 +264,13 @@ namespace System.Net.Test.Common
         public async Task SendResponseAsync(HttpStatusCode statusCode = HttpStatusCode.OK, IList<HttpHeaderData> headers = null, string content = "", bool isFinal = true)
         {
             IEnumerable<HttpHeaderData> newHeaders = headers ?? Enumerable.Empty<HttpHeaderData>();
+            Console.WriteLine(headers.Count());
 
             if (content != null && !newHeaders.Any(x => x.Name == "Content-Length"))
             {
+                
                 newHeaders = newHeaders.Append(new HttpHeaderData("Content-Length", content.Length.ToString(CultureInfo.InvariantCulture)));
             }
-
             await SendResponseHeadersAsync(statusCode, newHeaders).ConfigureAwait(false);
             await SendResponseBodyAsync(Encoding.UTF8.GetBytes(content ?? ""), isFinal).ConfigureAwait(false);
         }
