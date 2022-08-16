@@ -13,6 +13,7 @@ using System.Net.Security;
 using System.Net.Sockets;
 using System.Net.Test.Common;
 using System.Reflection;
+using System.Reflection.PortableExecutable;
 using System.Security.Authentication;
 using System.Text;
 using System.Threading;
@@ -60,6 +61,7 @@ namespace System.Net.Http.Functional.Tests
                 {
                     Assert.False(settingsStream.CanWrite, "Expected unidirectional control stream.");
                     Assert.Equal(expectedHeaderSizeLimitBytes, connection.MaxHeaderListSize);
+                    Console.WriteLine("AAAAAAAAAAAAAAAA " + connection.MaxHeaderListSize + " nunununun " + connection.EnableWebtransport);
 
                     await requestStream.ReadRequestDataAsync();
                     await requestStream.SendResponseAsync();
@@ -96,7 +98,12 @@ namespace System.Net.Http.Functional.Tests
                 ICollection<(long settingId, long settingValue)> settings = new LinkedList<(long settingId, long settingValue)>();
                 settings.Add((Http3LoopbackStream.EnableWebTransport, 1));
                 await using Http3LoopbackConnection connection = (Http3LoopbackConnection)await server.EstablishSettingsFrameGenericConnectionAsync(settings);
-
+                var headers = new List<HttpHeaderData>();
+                int contentLength = 2 * 1024 * 1024;
+                HttpHeaderData header = new HttpHeaderData("Sec-Webtransport-Http3-Draft02", "");
+                headers.Add(new HttpHeaderData("Content-Length", contentLength.ToString(CultureInfo.InvariantCulture)));
+                headers.Add(header);
+                headers.Append(header);
                 (Http3LoopbackStream settingsStream, Http3LoopbackStream stream) = await connection.AcceptControlAndRequestStreamAsync();
 
                 await using (settingsStream)
@@ -104,32 +111,32 @@ namespace System.Net.Http.Functional.Tests
                 {
                     Assert.Equal(1, connection.EnableWebtransport);
                     await stream.ReadRequestDataAsync();
-                    await stream.SendResponseAsync();
+                    await stream.SendResponseAsync(HttpStatusCode.OK, headers);
                 }
 
                 /*await using Http3LoopbackStream stream = await connection.AcceptRequestStreamAsync();
                 await stream.HandleRequestAsync();*/
                 var wtClientUnidirectionalStream = await connection.AcceptWebtransportStreamAsync();
                 (long? frameType, long? sessionId) = await wtClientUnidirectionalStream.ReadWTFrameAsync();
-                Console.Write("OOOO " + sessionId + " "+ stream.StreamId);
+                Console.Write("OOOO " + sessionId + " -"+ stream.StreamId + " lllll");
 
-                var wtClientBidirectionalStream = await connection.AcceptWebtransportStreamAsync();
+               /* var wtClientBidirectionalStream = await connection.AcceptWebtransportStreamAsync();
                 (long? frameType2, long? sessionId2) = await wtClientBidirectionalStream.ReadWTFrameAsync();
                 Console.Write("OOOO " + sessionId2 + " " + stream.StreamId);
                 var wtServerUnidirectionalStream = await connection.OpenUnidirectionalWTStreamAsync(sessionId);
                 var wtServerBidirectionalStream = await connection.OpenBidirectionalWTStreamAsync(sessionId);
-                //  wtServerUnidirectionalStream.
-                byte[] bytes;// = Encoding.ASCII.GetBytes(s);
-                await Task.Delay(5_000);
+                //  wtServerUnidirectionalStream. */
+             //   byte[] bytes;// = Encoding.ASCII.GetBytes(s);
+               /* await Task.Delay(5_000);
 
                 bytes = await wtClientUnidirectionalStream.ReadDataStreamAsync();
-                Console.Write(Encoding.ASCII.GetString(bytes));
-                bytes = await wtClientBidirectionalStream.ReadDataStreamAsync();
+                Console.Write(Encoding.ASCII.GetString(bytes));*/
+/*                bytes = await wtClientBidirectionalStream.ReadDataStreamAsync();
                 Console.Write(Encoding.ASCII.GetString(bytes));
                 bytes = bytes.Reverse().ToArray();
-                Console.Write("Reversed?? " + Encoding.ASCII.GetString(bytes));
+                Console.Write("Reversed?? " + Encoding.ASCII.GetString(bytes));*/
 
-                await wtClientBidirectionalStream.SendDataStreamAsync(bytes);
+              //  await wtClientBidirectionalStream.SendDataStreamAsync(bytes);
 
             });
 
@@ -167,7 +174,7 @@ namespace System.Net.Http.Functional.Tests
             headers.Add(new HttpHeaderData("Content-Length", contentLength.ToString(CultureInfo.InvariantCulture)));
             headers.Add(header);
             headers.Append(header);
-            Console.WriteLine("WTFFFF " + headers.Count + " " + header);
+            //Console.WriteLine("WTFFFF " + headers.Count + " " + header);
             Task serverTask = Task.Run(async () =>
             {
                 // full client check
@@ -234,9 +241,6 @@ namespace System.Net.Http.Functional.Tests
                 request.Headers.Protocol = "webtransport";
                 using HttpResponseMessage response = await client.SendAsync(request);
                 Console.Write(response);
-                request.Version = HttpVersion.Version30;
-                request.VersionPolicy = HttpVersionPolicy.RequestVersionExact;
-                request.Headers.Protocol = "webtransport";
                 HttpRequestMessage request3 = new(HttpMethod.Connect, server.Address);
                 request3.Version = HttpVersion.Version30;
                 request3.VersionPolicy = HttpVersionPolicy.RequestVersionExact;

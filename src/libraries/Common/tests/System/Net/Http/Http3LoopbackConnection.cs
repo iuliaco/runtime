@@ -151,7 +151,7 @@ namespace System.Net.Test.Common
                 Assert.Equal(Http3LoopbackStream.ControlStream, streamType);
             
                 List<(long settingId, long settingValue)> settings = await controlStream.ReadSettingsAsync();
-                (long webtransportId, long webtransportValue) = settings[0];
+                (long webtransportId, long webtransportValue) = Assert.Single(settings, setting => setting.settingId == Http3LoopbackStream.EnableWebTransport);
                 (long settingId, long settingValue) = Assert.Single(settings, setting => setting.settingId == Http3LoopbackStream.MaxHeaderListSize);
 
                 Assert.Equal(Http3LoopbackStream.MaxHeaderListSize, settingId);
@@ -166,13 +166,13 @@ namespace System.Net.Test.Common
         // This will automatically handle the control stream, including validating its contents
         public async Task<Http3LoopbackStream> AcceptRequestStreamAsync()
         {
+
             await EnsureControlStreamAcceptedAsync().ConfigureAwait(false);
 
             if (!_delayedStreams.TryDequeue(out QuicStream quicStream))
             {
                 quicStream = await _connection.AcceptInboundStreamAsync().ConfigureAwait(false);
             }
-
             var stream = new Http3LoopbackStream(quicStream);
 
             Assert.True(quicStream.CanWrite, "Expected writeable stream.");
@@ -186,7 +186,9 @@ namespace System.Net.Test.Common
 
         public async Task<Http3LoopbackStream> AcceptWebtransportStreamAsync()
         {
+            Console.WriteLine("probleme la control stream sefa");
             await EnsureControlStreamAcceptedAsync().ConfigureAwait(false);
+            Console.WriteLine(" nu am primit streamul pe server sefule");
 
             if (!_delayedStreams.TryDequeue(out QuicStream quicStream))
             {
@@ -194,6 +196,7 @@ namespace System.Net.Test.Common
             }
 
             var stream = new Http3LoopbackStream(quicStream);
+            Console.WriteLine("am primit streamul pe server sefule " + stream.StreamId);
 
             //Assert.True(quicStream.CanWri, "Expected writeable stream.");
 

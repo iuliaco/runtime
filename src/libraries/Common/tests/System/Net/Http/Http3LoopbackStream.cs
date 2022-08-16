@@ -264,7 +264,6 @@ namespace System.Net.Test.Common
         public async Task SendResponseAsync(HttpStatusCode statusCode = HttpStatusCode.OK, IList<HttpHeaderData> headers = null, string content = "", bool isFinal = true)
         {
             IEnumerable<HttpHeaderData> newHeaders = headers ?? Enumerable.Empty<HttpHeaderData>();
-            Console.WriteLine(headers.Count());
 
             if (content != null && !newHeaders.Any(x => x.Name == "Content-Length"))
             {
@@ -478,8 +477,10 @@ namespace System.Net.Test.Common
 
         public async Task<(long? frameType, long? session)> ReadWTFrameAsync()
         {
+            Console.WriteLine("Citesc frameul sefa");
             long? frameType = await ReadIntegerAsync().ConfigureAwait(false);
-            Console.WriteLine(frameType);
+            Console.WriteLine("Citesc frameul sefa 2 " + frameType);
+
             if (frameType == null) return (null, null);
 
             long? session = await ReadIntegerAsync().ConfigureAwait(false);
@@ -495,10 +496,12 @@ namespace System.Net.Test.Common
 
             long integerValue;
             int bytesRead;
-
+            Console.WriteLine("citesc numar " + _stream.Id);
             do
             {
                 bytesRead = await _stream.ReadAsync(buffer.AsMemory(bufferActiveLength++, 1)).ConfigureAwait(false);
+                Console.WriteLine("citesc numar 2");
+
                 if (bytesRead == 0)
                 {
                     return bufferActiveLength == 1 ? (long?)null : throw new Exception("Unable to read varint; unexpected end of stream.");

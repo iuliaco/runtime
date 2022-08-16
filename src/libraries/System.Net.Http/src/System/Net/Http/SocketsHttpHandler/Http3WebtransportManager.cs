@@ -54,7 +54,10 @@ namespace System.Net.Http
         public async ValueTask<QuicStream?> OpenUnidirectionalStreamAsync(long sessionId)
         {
             Http3WebtransportSession? session;
+            Console.WriteLine("Test ce am stricat frate    " + sessionId);
             _sessions.TryGetValue(sessionId, out session);
+            Console.WriteLine("Test ce am stricat frate    " + session);
+
             // if no session with that id exists throw exception
             // https://datatracker.ietf.org/doc/html/draft-ietf-webtrans-http3#section-4
             if (session == null)

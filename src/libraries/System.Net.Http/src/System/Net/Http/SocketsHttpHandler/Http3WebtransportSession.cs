@@ -50,11 +50,16 @@ namespace System.Net.Http
             {
                 clientWTStream = await connection.QuicConnection!.OpenOutboundStreamAsync(QuicStreamType.Unidirectional).ConfigureAwait(false);
                 //await clientWTStream.WriteAsync(OutputStreamHeader, CancellationToken.None).ConfigureAwait(false);
+                Console.WriteLine("Test ce am stricat frate2    " + clientWTStream.Id);
 
                 bool addStream = _streams.TryAdd(clientWTStream.Id, clientWTStream);
                 if (!addStream)
                     return null;
                 await clientWTStream.WriteAsync(BuildUnidirectionalClientFrame(), CancellationToken.None).ConfigureAwait(false);
+                Console.WriteLine("Test ce am stricat frate23    " + BuildBidirectionalClientFrame()[0]);
+                Console.WriteLine("Test ce am stricat frate23    " + BuildBidirectionalClientFrame()[1]);
+                Console.WriteLine("Test ce am stricat frate23    " + BuildBidirectionalClientFrame()[2]);
+
                 return clientWTStream;
 
             }
@@ -90,7 +95,7 @@ namespace System.Net.Http
             int payloadLength = webtransportLength + webtransportSessionLength; // includes the webtransport stream and the session id
             Debug.Assert(payloadLength <= VariableLengthIntegerHelper.OneByteLimit);
 
-
+            Console.WriteLine(payloadLength +" atat trimit coaie");
             return buffer.Slice(0, payloadLength).ToArray();
         }
 

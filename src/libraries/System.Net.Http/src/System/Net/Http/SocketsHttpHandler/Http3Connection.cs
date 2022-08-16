@@ -102,6 +102,7 @@ namespace System.Net.Http
                 HttpTelemetry.Log.Http30ConnectionEstablished();
                 _markedByTelemetryStatus = TelemetryStatus_Opened;
             }
+            Console.Write("In gttp3 connection");
 
             _expectedSettingsFrameProcessed = new TaskCompletionSource<bool>();
 
@@ -267,17 +268,18 @@ namespace System.Net.Http
                             bool newWTSession = WTManager!.addSession(requestStream);
                             if(newWTSession)
                             {
+                                Console.Write(requestStream.StreamId + "asra e idullllll");
                                 QuicStream? uniWTStream = await WTManager.OpenUnidirectionalStreamAsync(requestStream.StreamId).ConfigureAwait(false);
-                                QuicStream? biWTStream = await WTManager.OpenBidirectionalStreamAsync(requestStream.StreamId).ConfigureAwait(false);
-                                string s = "Ana are mere";
+                              //  QuicStream? biWTStream = await WTManager.OpenBidirectionalStreamAsync(requestStream.StreamId).ConfigureAwait(false);
+                                /*string s = "Ana are mere";
                                 byte[] bytes = Encoding.ASCII.GetBytes(s);
-                                await uniWTStream!.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
-                                s = "Ana n are mere";
+                                await uniWTStream!.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);*/
+                               /* s = "Ana n are mere";
                                 bytes = Encoding.ASCII.GetBytes(s);
                                 await biWTStream!.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
                                 byte[] bytes2 = new byte[1000];
                                 await biWTStream.ReadAsync(bytes2, cancellationToken).ConfigureAwait(false);
-                                Console.Write("here it starts :" + Encoding.ASCII.GetString(bytes2));
+                                Console.Write("here it starts :" + Encoding.ASCII.GetString(bytes2));*/
                                 requestStream = null;
                                 return response;
                             }
@@ -457,20 +459,20 @@ namespace System.Net.Http
 
         public static byte[] BuildSettingsFrame(HttpConnectionSettings settings)
         {
-            Span<byte> buffer = stackalloc byte[4 + VariableLengthIntegerHelper.MaximumEncodedLength + 5];
-
+            Span<byte> buffer = stackalloc byte[9 + VariableLengthIntegerHelper.MaximumEncodedLength];
 
             int integerLength = VariableLengthIntegerHelper.WriteInteger(buffer.Slice(4), settings.MaxResponseHeadersByteLength);
-            int payloadLength = 1 + integerLength; // includes the setting ID and the integer value.
+            int webtransportLength = VariableLengthIntegerHelper.WriteInteger(buffer.Slice(4 + integerLength), (long)Http3SettingType.EnableWebTransport);
+            int payloadLength = 2 + integerLength + webtransportLength; // includes the setting and webtransport ID and the integers values.
             Debug.Assert(payloadLength <= VariableLengthIntegerHelper.OneByteLimit);
 
             buffer[0] = (byte)Http3StreamType.Control;
             buffer[1] = (byte)Http3FrameType.Settings;
             buffer[2] = (byte)payloadLength;
-            buffer[7] = (byte)1;
-            buffer[8] = (byte)Http3SettingType.MaxHeaderListSize;
+            buffer[3] = (byte)Http3SettingType.MaxHeaderListSize;
+            buffer[4 + integerLength + webtransportLength] = 1;
 
-            return buffer.Slice(0, 4 + 5 + integerLength).ToArray();
+            return buffer.Slice(0, 3 + payloadLength).ToArray();
         }
 
         /// <summary>
