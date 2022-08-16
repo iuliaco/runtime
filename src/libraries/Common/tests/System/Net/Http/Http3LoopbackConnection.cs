@@ -58,6 +58,7 @@ namespace System.Net.Test.Common
         }
 
         public long MaxHeaderListSize { get; private set; } = -1;
+        public long EnableWebtransport { get; private set; } = 0;
 
         public override async ValueTask DisposeAsync()
         {
@@ -148,12 +149,15 @@ namespace System.Net.Test.Common
 
                 long? streamType = await controlStream.ReadIntegerAsync();
                 Assert.Equal(Http3LoopbackStream.ControlStream, streamType);
-
+            
                 List<(long settingId, long settingValue)> settings = await controlStream.ReadSettingsAsync();
-                (long settingId, long settingValue) = Assert.Single(settings);
+                (long webtransportId, long webtransportValue) = settings[0];
+                (long settingId, long settingValue) = Assert.Single(settings, setting => setting.settingId == Http3LoopbackStream.MaxHeaderListSize);
 
                 Assert.Equal(Http3LoopbackStream.MaxHeaderListSize, settingId);
+                
                 MaxHeaderListSize = settingValue;
+                EnableWebtransport = webtransportValue;
 
                 _inboundControlStream = controlStream;
             }
@@ -180,6 +184,26 @@ namespace System.Net.Test.Common
             return stream;
         }
 
+        public async Task<Http3LoopbackStream> AcceptWebtransportStreamAsync()
+        {
+            await EnsureControlStreamAcceptedAsync().ConfigureAwait(false);
+
+            if (!_delayedStreams.TryDequeue(out QuicStream quicStream))
+            {
+                quicStream = await _connection.AcceptInboundStreamAsync().ConfigureAwait(false);
+            }
+
+            var stream = new Http3LoopbackStream(quicStream);
+
+            //Assert.True(quicStream.CanWri, "Expected writeable stream.");
+
+            _openStreams.Add(checked((int)quicStream.Id), stream);
+            _currentStream = stream;
+            _currentStreamId = quicStream.Id;
+
+            return stream;
+        }
+
         public async Task<(Http3LoopbackStream clientControlStream, Http3LoopbackStream requestStream)> AcceptControlAndRequestStreamAsync()
         {
             Http3LoopbackStream requestStream = await AcceptRequestStreamAsync();
@@ -188,11 +212,24 @@ namespace System.Net.Test.Common
             return (controlStream, requestStream);
         }
 
-        public async Task EstablishControlStreamAsync()
+        public async Task EstablishControlStreamAsync(ICollection<(long settingId, long settingValue)> settings = null)
         {
             _outboundControlStream = await OpenUnidirectionalStreamAsync();
             await _outboundControlStream.SendUnidirectionalStreamTypeAsync(Http3LoopbackStream.ControlStream);
-            await _outboundControlStream.SendSettingsFrameAsync();
+            await _outboundControlStream.SendSettingsFrameAsync(settings);
+        }
+
+        public async Task<Http3LoopbackStream> OpenUnidirectionalWTStreamAsync(long? sessionId)
+        {
+            Http3LoopbackStream wtStream = await OpenUnidirectionalStreamAsync();
+            await wtStream.SendWTStreamHeaderAsync(Http3LoopbackStream.UniWTStream, sessionId);
+            return wtStream;
+        }
+        public async Task<Http3LoopbackStream> OpenBidirectionalWTStreamAsync(long? sessionId)
+        {
+            Http3LoopbackStream wtStream = await OpenBidirectionalStreamAsync();
+            await wtStream.SendWTStreamHeaderAsync(Http3LoopbackStream.BiWTStream, sessionId);
+            return wtStream;
         }
 
         public override async Task<byte[]> ReadRequestBodyAsync()

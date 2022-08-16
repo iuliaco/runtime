@@ -167,7 +167,6 @@ namespace System.Net.Http
                 {
                     sendContentTask = Task.CompletedTask;
                 }
-
                 // In parallel, send content and read response.
                 // Depending on Expect 100 Continue usage, one will depend on the other making progress.
                 Task readResponseTask = ReadResponseAsync(_requestBodyCancellationSource.Token);
@@ -224,6 +223,7 @@ namespace System.Net.Http
                     // A read stream is required to finish up the request.
                     responseContent.SetStream(new Http3ReadStream(this));
                 }
+
                 if (NetEventSource.Log.IsEnabled()) Trace($"Received response: {_response}");
 
                 // Process any Set-Cookie headers.
@@ -575,6 +575,11 @@ namespace System.Net.Http
             BufferBytes(normalizedMethod.Http3EncodedBytes);
             BufferIndexedHeader(H3StaticTable.SchemeHttps);
 
+            if (request.HasHeaders && request.Headers.Protocol != null)
+            {
+                BufferLiteralHeaderWithoutNameReference(":protocol", request.Headers.Protocol, null);
+            }
+
             if (request.HasHeaders && request.Headers.Host != null)
             {
                 BufferLiteralHeaderWithStaticNameReference(H3StaticTable.Authority, request.Headers.Host);
@@ -609,6 +614,11 @@ namespace System.Net.Http
                 BufferHeaderCollection(request.Headers);
             }
 
+            if(request.IsWebTransportH3Request())
+            {
+                BufferLiteralHeaderWithoutNameReference(Http3WebtransportSession.CurrentSuppportedVersion, "1", null);
+            }
+
             if (_connection.Pool.Settings._useCookies)
             {
                 string cookiesFromContainer = _connection.Pool.Settings._cookieContainer!.GetCookieHeader(request.RequestUri);
@@ -631,6 +641,7 @@ namespace System.Net.Http
                 BufferHeaderCollection(request.Content.Headers);
             }
 
+
             // Determine our header envelope size.
             // The reserved space was the maximum required; discard what wasn't used.
             int headersLength = _sendBuffer.ActiveLength - PreHeadersReserveSpace;
@@ -641,7 +652,6 @@ namespace System.Net.Http
             _sendBuffer.ActiveSpan[0] = (byte)Http3FrameType.Headers;
             int actualHeadersLengthEncodedSize = VariableLengthIntegerHelper.WriteInteger(_sendBuffer.ActiveSpan.Slice(1, headersLengthEncodedSize), headersLength);
             Debug.Assert(actualHeadersLengthEncodedSize == headersLengthEncodedSize);
-
             if (HttpTelemetry.Log.IsEnabled()) HttpTelemetry.Log.RequestHeadersStop();
         }
 

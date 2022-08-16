@@ -13,6 +13,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Net.Http.Headers;
 using System.Net.Security;
+using System.Text;
 
 namespace System.Net.Http
 {
@@ -39,6 +40,11 @@ namespace System.Net.Http
 
         // Current SETTINGS from the server.
         private int _maximumHeadersLength = int.MaxValue; // TODO: this is not yet observed by Http3Stream when buffering headers.
+        private int _enableWebTransport; // by default setted with 0
+        private TaskCompletionSource<bool>? _expectedSettingsFrameProcessed; // True indicates we should send content (e.g. received 100 Continue).
+
+
+        private Http3WebtransportManager? WTManager;
 
         // Once the server's streams are received, these are set to 1. Further receipt of these streams results in a connection error.
         private int _haveServerControlStream;
@@ -54,7 +60,12 @@ namespace System.Net.Http
 
         public HttpAuthority Authority => _authority;
         public HttpConnectionPool Pool => _pool;
+        // sadly I do not know how to acces it otherwise
+        public QuicConnection? QuicConnection => _connection;
+
         public int MaximumRequestHeadersLength => _maximumHeadersLength;
+
+        public int EnableWebTransport => _enableWebTransport;
         public byte[]? AltUsedEncodedHeaderBytes => _altUsedEncodedHeader;
         public Exception? AbortException => Volatile.Read(ref _abortException);
         private object SyncObj => _activeRequests;
@@ -91,6 +102,8 @@ namespace System.Net.Http
                 HttpTelemetry.Log.Http30ConnectionEstablished();
                 _markedByTelemetryStatus = TelemetryStatus_Opened;
             }
+
+            _expectedSettingsFrameProcessed = new TaskCompletionSource<bool>();
 
             // Errors are observed via Abort().
             _ = SendSettingsAsync();
@@ -177,6 +190,18 @@ namespace System.Net.Http
             QuicStream? quicStream = null;
             Http3RequestStream? requestStream = null;
 
+            // todo add await
+            if (request.IsWebTransportH3Request())
+            {
+                await _expectedSettingsFrameProcessed!.Task.ConfigureAwait(false);
+                if (EnableWebTransport == 0)
+                {
+                    //TODO: should create a new exception message - on next steps
+                    HttpRequestException exception = new(SR.net_unsupported_extended_connect);
+                    throw exception;
+                }
+            }
+
             try
             {
                 try
@@ -232,8 +257,41 @@ namespace System.Net.Http
 
                 Task<HttpResponseMessage> responseTask = requestStream.SendAsync(cancellationToken);
 
+                if (request.IsWebTransportH3Request())
+                {
+                    var response = await responseTask.ConfigureAwait(false);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        bool newWTSession = WTManager!.addSession(requestStream);
+                        /*if(newWTSession)
+                        {
+                            QuicStream? uniWTStream = await WTManager.OpenUnidirectionalStreamAsync(requestStream.StreamId).ConfigureAwait(false);
+                            QuicStream? biWTStream = await WTManager.OpenBidirectionalStreamAsync(requestStream.StreamId).ConfigureAwait(false);
+                            string s = "Ana are mere";
+                            byte[] bytes = Encoding.ASCII.GetBytes(s);
+                            await uniWTStream!.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
+                            s = "Ana n are mere";
+                            bytes = Encoding.ASCII.GetBytes(s);
+                            await biWTStream!.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
+                            byte[] bytes2 = new byte[1000];
+                            await biWTStream.ReadAsync(bytes2, cancellationToken).ConfigureAwait(false);
+                            Console.Write("here it starts :" + Encoding.ASCII.GetString(bytes2));
+                            requestStream = null;
+                            return response;
+                        }*/
+
+                    }
+                    else
+                    {
+                        // the rfc does not specify what should be done if the server refuses a webtrans connect request
+                    }
+
+                }
+
                 // null out requestStream to avoid disposing in finally block. It is now in charge of disposing itself.
                 requestStream = null;
+
+
 
                 return await responseTask.ConfigureAwait(false);
             }
@@ -389,7 +447,8 @@ namespace System.Net.Http
 
         public static byte[] BuildSettingsFrame(HttpConnectionSettings settings)
         {
-            Span<byte> buffer = stackalloc byte[4 + VariableLengthIntegerHelper.MaximumEncodedLength];
+            Span<byte> buffer = stackalloc byte[4 + VariableLengthIntegerHelper.MaximumEncodedLength + 5];
+
 
             int integerLength = VariableLengthIntegerHelper.WriteInteger(buffer.Slice(4), settings.MaxResponseHeadersByteLength);
             int payloadLength = 1 + integerLength; // includes the setting ID and the integer value.
@@ -398,9 +457,10 @@ namespace System.Net.Http
             buffer[0] = (byte)Http3StreamType.Control;
             buffer[1] = (byte)Http3FrameType.Settings;
             buffer[2] = (byte)payloadLength;
-            buffer[3] = (byte)Http3SettingType.MaxHeaderListSize;
+            buffer[7] = (byte)1;
+            buffer[8] = (byte)Http3SettingType.MaxHeaderListSize;
 
-            return buffer.Slice(0, 4 + integerLength).ToArray();
+            return buffer.Slice(0, 4 + 5 + integerLength).ToArray();
         }
 
         /// <summary>
@@ -426,7 +486,6 @@ namespace System.Net.Http
                     }
 
                     QuicStream stream = await streamTask.ConfigureAwait(false);
-
                     // This process is cleaned up when _connection is disposed, and errors are observed via Abort().
                     _ = ProcessServerStreamAsync(stream);
                 }
@@ -459,11 +518,6 @@ namespace System.Net.Http
             {
                 await using (stream.ConfigureAwait(false))
                 {
-                    if (stream.CanWrite)
-                    {
-                        // Server initiated bidirectional streams are either push streams or extensions, and we support neither.
-                        throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.StreamCreationError);
-                    }
 
                     buffer = new ArrayBuffer(initialSize: 32, usePool: true);
 
@@ -489,9 +543,28 @@ namespace System.Net.Http
                     }
 
                     buffer.Commit(bytesRead);
+                    long streamType;
+                    VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan, out streamType, out bytesRead);
+                    if (stream.CanWrite)
+                    {
+                        if (EnableWebTransport == 1)
+                        {
+                            if(streamType == (long)Http3StreamType.WebTransportBidirectional)
+                            {
+                                Console.Write("Catched it nailed it bidir stream");
+                                long sessionId;
+                                VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan.Slice(bytesRead), out sessionId, out bytesRead);
+                                buffer.Commit(bytesRead);
+                                WTManager!.AcceptServerStream(stream, sessionId);
+                                return;
+                            }
+                        }
+                        // Server initiated bidirectional streams are either push streams or extensions, and we support neither.
+                        throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.StreamCreationError);
 
+                        }
                     // Stream type is a variable-length integer, but we only check the first byte. There is no known type requiring more than 1 byte.
-                    switch (buffer.ActiveSpan[0])
+                    switch (streamType)
                     {
                         case (byte)Http3StreamType.Control:
                             if (Interlocked.Exchange(ref _haveServerControlStream, 1) != 0)
@@ -536,6 +609,13 @@ namespace System.Net.Http
                             // We don't support push streams.
                             // Because no maximum push stream ID was negotiated via a MAX_PUSH_ID frame, server should not have sent this. Abort the connection with H3_ID_ERROR.
                             throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.IdError);
+                        case (long)Http3StreamType.WebTransportUnidirectional:
+                            long sessionId;
+                            VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan.Slice(bytesRead), out sessionId, out bytesRead);
+                            buffer.Commit(bytesRead);
+                            WTManager!.AcceptServerStream(stream, sessionId);
+                            return;
+                            //throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.IdError);
                         default:
                             // Unknown stream type. Per spec, these must be ignored and aborted but not be considered a connection-level error.
 
@@ -725,6 +805,16 @@ namespace System.Net.Http
                         case Http3SettingType.MaxHeaderListSize:
                             _maximumHeadersLength = (int)Math.Min(settingValue, int.MaxValue);
                             break;
+                        case Http3SettingType.EnableWebTransport:
+
+                            // Per https://datatracker.ietf.org/doc/html/draft-ietf-webtrans-http3#section-3.1
+                            // an endpoint that receives a value other than "0" or "1" MUST close the
+                            // connection with the H3_SETTINGS_ERROR error code.
+                            if (settingValue != 0 && settingValue != 1)
+                                throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.SettingsError);
+                            _enableWebTransport = (int)settingValue;
+                            WTManager = new Http3WebtransportManager(this);
+                            break;
                         case Http3SettingType.ReservedHttp2EnablePush:
                         case Http3SettingType.ReservedHttp2MaxConcurrentStreams:
                         case Http3SettingType.ReservedHttp2InitialWindowSize:
@@ -734,6 +824,7 @@ namespace System.Net.Http
                             throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.SettingsError);
                     }
                 }
+                _expectedSettingsFrameProcessed!.TrySetResult(true);
             }
 
             async ValueTask ProcessGoAwayFrameAsync(long goawayPayloadLength)

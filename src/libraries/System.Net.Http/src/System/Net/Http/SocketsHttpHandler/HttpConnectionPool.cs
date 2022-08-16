@@ -989,16 +989,16 @@ namespace System.Net.Http
 
                 HttpResponseMessage response = await connection.SendAsync(request, queueStartingTimestamp, cancellationToken).ConfigureAwait(false);
 
-                // If an Alt-Svc authority returns 421, it means it can't actually handle the request.
-                // An authority is supposed to be able to handle ALL requests to the origin, so this is a server bug.
-                // In this case, we blocklist the authority and retry the request at the origin.
-                if (response.StatusCode == HttpStatusCode.MisdirectedRequest && connection.Authority != _originAuthority)
+
+                    // If an Alt-Svc authority returns 421, it means it can't actually handle the request.
+                    // An authority is supposed to be able to handle ALL requests to the origin, so this is a server bug.
+                    // In this case, we blocklist the authority and retry the request at the origin.
+                    if (response.StatusCode == HttpStatusCode.MisdirectedRequest && connection.Authority != _originAuthority)
                 {
                     response.Dispose();
                     BlocklistAuthority(connection.Authority);
                     continue;
                 }
-
                 return response;
             }
         }
@@ -1032,6 +1032,7 @@ namespace System.Net.Http
                     {
                         Debug.Assert(async);
                         response = await TrySendUsingHttp3Async(request, cancellationToken).ConfigureAwait(false);
+
                     }
 
                     if (response is null)
@@ -1098,6 +1099,7 @@ namespace System.Net.Http
                     }
 
                     ProcessAltSvc(response);
+
                     return response;
                 }
                 catch (HttpRequestException e) when (e.AllowRetry == RequestRetryType.RetryOnConnectionFailure)
