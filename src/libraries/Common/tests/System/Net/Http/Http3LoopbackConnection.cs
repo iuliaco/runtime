@@ -186,9 +186,7 @@ namespace System.Net.Test.Common
 
         public async Task<Http3LoopbackStream> AcceptWebtransportStreamAsync()
         {
-            Console.WriteLine("probleme la control stream sefa");
             await EnsureControlStreamAcceptedAsync().ConfigureAwait(false);
-            Console.WriteLine(" nu am primit streamul pe server sefule");
 
             if (!_delayedStreams.TryDequeue(out QuicStream quicStream))
             {
@@ -196,9 +194,6 @@ namespace System.Net.Test.Common
             }
 
             var stream = new Http3LoopbackStream(quicStream);
-            Console.WriteLine("am primit streamul pe server sefule " + stream.StreamId);
-
-            //Assert.True(quicStream.CanWri, "Expected writeable stream.");
 
             _openStreams.Add(checked((int)quicStream.Id), stream);
             _currentStream = stream;
@@ -221,6 +216,7 @@ namespace System.Net.Test.Common
             await _outboundControlStream.SendUnidirectionalStreamTypeAsync(Http3LoopbackStream.ControlStream);
             await _outboundControlStream.SendSettingsFrameAsync(settings);
         }
+
 
         public async Task<Http3LoopbackStream> OpenUnidirectionalWTStreamAsync(long? sessionId)
         {
