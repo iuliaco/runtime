@@ -102,8 +102,6 @@ namespace System.Net.Http
                 HttpTelemetry.Log.Http30ConnectionEstablished();
                 _markedByTelemetryStatus = TelemetryStatus_Opened;
             }
-            Console.Write("In gttp3 connection");
-
             _expectedSettingsFrameProcessed = new TaskCompletionSource<bool>();
 
             // Errors are observed via Abort().
@@ -263,26 +261,25 @@ namespace System.Net.Http
                     var response = await responseTask.ConfigureAwait(false);
                     if (response.IsSuccessStatusCode)
                     {
-                        if (response.Headers.Contains(Http3WebtransportSession.CurrentSuppportedVersion))
-                        {
+                       // if (response.Headers.Contains(Http3WebtransportSession.CurrentSuppportedVersion))
+                        //{
                             bool newWTSession = WTManager!.addSession(requestStream);
                             if(newWTSession)
                             {
-                                Console.Write(requestStream.StreamId + "asra e idullllll");
                                 QuicStream? uniWTStream = await WTManager.OpenUnidirectionalStreamAsync(requestStream.StreamId).ConfigureAwait(false);
-                              //  QuicStream? biWTStream = await WTManager.OpenBidirectionalStreamAsync(requestStream.StreamId).ConfigureAwait(false);
-                                /*string s = "Ana are mere";
+                                QuicStream? biWTStream = await WTManager.OpenBidirectionalStreamAsync(requestStream.StreamId).ConfigureAwait(false);
+                                string s = "Ana are mere";
                                 byte[] bytes = Encoding.ASCII.GetBytes(s);
-                                await uniWTStream!.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);*/
-                               /* s = "Ana n are mere";
+                                await uniWTStream!.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
+                                s = "Ana n are mere deloc";
                                 bytes = Encoding.ASCII.GetBytes(s);
                                 await biWTStream!.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
-                                byte[] bytes2 = new byte[1000];
+                                byte[] bytes2 = new byte[100];
                                 await biWTStream.ReadAsync(bytes2, cancellationToken).ConfigureAwait(false);
-                                Console.Write("here it starts :" + Encoding.ASCII.GetString(bytes2));*/
+                                Console.Write("here it starts :" + Encoding.ASCII.GetString(bytes2));
                                 requestStream = null;
                                 return response;
-                            }
+                          //  }
                         }
                         else
                         {
@@ -439,7 +436,6 @@ namespace System.Net.Http
             try
             {
                 _clientControl = await _connection!.OpenOutboundStreamAsync(QuicStreamType.Unidirectional).ConfigureAwait(false);
-
                 // Server MUST NOT abort our control stream, setup a continuation which will react accordingly
                 _ = _clientControl.WritesClosed.ContinueWith(t =>
                 {
@@ -624,7 +620,7 @@ namespace System.Net.Http
                         case (long)Http3StreamType.WebTransportUnidirectional:
                             long sessionId;
                             VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan.Slice(bytesRead), out sessionId, out bytesRead);
-                            buffer.Commit(bytesRead);
+                            //buffer.Commit(bytesRead);
                             WTManager!.AcceptServerStream(stream, sessionId);
                             return;
                             //throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.IdError);
