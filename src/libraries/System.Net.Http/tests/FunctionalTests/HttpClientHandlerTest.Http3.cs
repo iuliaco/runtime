@@ -100,7 +100,7 @@ namespace System.Net.Http.Functional.Tests
                 await using Http3LoopbackConnection connection = (Http3LoopbackConnection)await server.EstablishSettingsFrameGenericConnectionAsync(settings);
                 var headers = new List<HttpHeaderData>();
                 int contentLength = 2 * 1024 * 1024;
-                HttpHeaderData header = new HttpHeaderData("Sec-Webtransport-Http3-Draft02", "");
+                HttpHeaderData header = new HttpHeaderData("sec-webtransport-http3-draft", "draft02");
                 headers.Add(new HttpHeaderData("Content-Length", contentLength.ToString(CultureInfo.InvariantCulture)));
                 headers.Add(header);
                 headers.Append(header);
@@ -182,7 +182,7 @@ namespace System.Net.Http.Functional.Tests
 
             var headers = new List<HttpHeaderData>();
             int contentLength = 2 * 1024 * 1024;
-            HttpHeaderData header = new HttpHeaderData("Sec-Webtransport-Http3-Draft02", "");
+            HttpHeaderData header = new HttpHeaderData("sec-webtransport-http3-draft", "draft02");
             headers.Add(new HttpHeaderData("Content-Length", contentLength.ToString(CultureInfo.InvariantCulture)));
             headers.Add(header);
             headers.Append(header);
@@ -295,9 +295,9 @@ namespace System.Net.Http.Functional.Tests
                         request2.Headers.Protocol = "webtransport";
                         using HttpResponseMessage response2 = await client.SendAsync(true, request2, HttpCompletionOption.ResponseHeadersRead);
                         //using HttpResponseMessage response2 = await client.SendAsync(request2);
+                        Console.WriteLine(response2);
 
-
-                        await Task.Delay(10_000);
+                       // await Task.Delay(10_000);
 
                     });
 
