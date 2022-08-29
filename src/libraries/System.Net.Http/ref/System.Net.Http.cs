@@ -6,6 +6,11 @@
 
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Net.Quic;
+using System.Runtime.Versioning;
+using System.Threading;
+using System.Threading.Channels;
+using System.Threading.Tasks;
 
 namespace System.Net.Http
 {
@@ -297,6 +302,23 @@ namespace System.Net.Http
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() { throw null; }
         public bool TryGetValue<TValue>(HttpRequestOptionsKey<TValue> key, [MaybeNullWhen(false)] out TValue value) { throw null; }
         public void Set<TValue>(HttpRequestOptionsKey<TValue> key, TValue value) { throw null; }
+    }
+
+    [SupportedOSPlatform("windows")]
+    [SupportedOSPlatform("linux")]
+    [SupportedOSPlatform("macos")]
+    [UnsupportedOSPlatform("browser")]
+
+    public partial class Http3WebtransportSession : IAsyncDisposable
+    {
+        public long id { get { throw null; } }
+        public bool getStreamStatus()  { throw null; }
+        public System.Threading.Tasks.TaskCompletionSource isEstablished = new TaskCompletionSource();
+        public System.Threading.Channels.Channel<System.Net.Quic.QuicStream> incomingStreamsQueue { get { throw null; } }
+        public Http3WebtransportSession(System.Net.Quic.QuicStream connectStream) { }
+        public static System.Threading.Tasks.ValueTask<Http3WebtransportSession?> connectAsync(Uri uri, HttpClientHandler? handler, CancellationToken cancellationToken) { throw null; }
+        public System.Threading.Tasks.ValueTask<QuicStream> getIncomingWTStreamFromServerAsync() { throw null; }
+        public ValueTask DisposeAsync() { throw null; }
     }
 
     public partial class HttpResponseMessage : System.IDisposable

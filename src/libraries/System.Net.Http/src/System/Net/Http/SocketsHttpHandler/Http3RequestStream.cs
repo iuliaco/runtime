@@ -65,6 +65,8 @@ namespace System.Net.Http
             set => Volatile.Write(ref _streamId, value);
         }
 
+        public QuicStream quicStream => _stream;
+
         public Http3RequestStream(HttpRequestMessage request, Http3Connection connection, QuicStream stream)
         {
             _request = request;
@@ -86,6 +88,8 @@ namespace System.Net.Http
         {
             if (!_disposed)
             {
+                Console.WriteLine("Abort Stream 2");
+
                 _disposed = true;
                 AbortStream();
                 _stream.Dispose();
@@ -106,6 +110,8 @@ namespace System.Net.Http
             if (!_disposed)
             {
                 _disposed = true;
+                Console.WriteLine("Abort Stream 3");
+
                 AbortStream();
                 await _stream.DisposeAsync().ConfigureAwait(false);
                 DisposeSyncHelper();
@@ -309,6 +315,7 @@ namespace System.Net.Http
             }
             finally
             {
+                Console.WriteLine("I FINNALY BUT DO I DISPOSE?");
                 if (shouldCancelBody)
                 {
                     _requestBodyCancellationSource.Cancel();
@@ -317,6 +324,7 @@ namespace System.Net.Http
                 linkedTokenRegistration.Dispose();
                 if (disposeSelf)
                 {
+
                     await DisposeAsync().ConfigureAwait(false);
                 }
             }
@@ -1315,6 +1323,8 @@ namespace System.Net.Http
 
         private void AbortStream()
         {
+            Console.WriteLine("Abort Stream " + _stream);
+
             // If the request body isn't completed, cancel it now.
             if (_requestContentLengthRemaining != 0) // 0 is used for the end of content writing, -1 is used for unknown Content-Length
             {
@@ -1366,6 +1376,8 @@ namespace System.Net.Http
                     // We shouldn't be using a managed instance here, but don't have much choice -- we
                     // need to remove the stream from the connection's GOAWAY collection and properly abort.
                     stream.AbortStream();
+                    Console.WriteLine("Abort Stream 4");
+
                     stream._connection.RemoveStream(stream._stream);
                     stream._connection = null!;
                 }

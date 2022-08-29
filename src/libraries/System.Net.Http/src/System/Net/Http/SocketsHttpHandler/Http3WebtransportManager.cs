@@ -20,38 +20,43 @@ namespace System.Net.Http
     internal sealed class Http3WebtransportManager
     {
         private ConcurrentDictionary<long, Http3WebtransportSession> _sessions;
-        private Http3Connection _connection;
+        private QuicConnection _connection;
 
         //private bool _disposed;
 
-        public Http3WebtransportManager(Http3Connection connection)
+        public Http3WebtransportManager(QuicConnection connection)
         {
             _sessions = new ConcurrentDictionary<long, Http3WebtransportSession>();
             _connection = connection;
         }
 
 
-        public bool addSession(Http3RequestStream connectStream)
+        public bool addSession(QuicStream connectStream, Http3WebtransportSession webtransportSession)
         {
 
-            return _sessions.TryAdd(connectStream.StreamId, new Http3WebtransportSession(connectStream));
+            return _sessions.TryAdd(connectStream.Id, webtransportSession);
         }
 
-        public bool AcceptServerStream(QuicStream stream, long sessionId)
+        public async ValueTask<bool> AcceptServerStream(QuicStream stream, long sessionId)
         {
             Http3WebtransportSession? session;
+            Console.WriteLine(" SPEEER nuuuuu " + sessionId);
             _sessions.TryGetValue(sessionId, out session);
             // if no session with that id exists throw exception
             // https://datatracker.ietf.org/doc/html/draft-ietf-webtrans-http3#section-4
             if (session == null)
             {
-                throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.IdError);
+                Console.WriteLine("aici?????");
+                return false;
+                // throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.IdError);
             }
-            return session.AcceptServerStream(stream);
-
+            await session.isEstablished.Task.ConfigureAwait(false);
+            var sper = session.AcceptServerStream(stream);
+            Console.WriteLine(" SPEEER " + sper);
+            return sper;
         }
 
-        public async ValueTask<QuicStream?> OpenUnidirectionalStreamAsync(long sessionId)
+     /*   public async ValueTask<QuicStream?> OpenUnidirectionalStreamAsync(long sessionId)
         {
             Http3WebtransportSession? session;
             _sessions.TryGetValue(sessionId, out session);
@@ -79,6 +84,6 @@ namespace System.Net.Http
             return await session.OpenBidirectionalStreamAsync(_connection).ConfigureAwait(false);
 
         }
-
+*/
     }
 }

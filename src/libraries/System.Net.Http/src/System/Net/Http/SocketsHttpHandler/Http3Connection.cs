@@ -32,6 +32,7 @@ namespace System.Net.Http
         // Keep a collection of requests around so we can process GOAWAY.
         private readonly Dictionary<QuicStream, Http3RequestStream> _activeRequests = new Dictionary<QuicStream, Http3RequestStream>();
 
+
         // Set when GOAWAY is being processed, when aborting, or when disposing.
         private long _firstRejectedStreamId = -1;
 
@@ -215,6 +216,7 @@ namespace System.Net.Http
                         quicStream = await conn.OpenOutboundStreamAsync(QuicStreamType.Bidirectional, cancellationToken).ConfigureAwait(false);
 
                         requestStream = new Http3RequestStream(request, this, quicStream);
+                        Console.WriteLine("Streamul de connect este " + quicStream);
                         lock (SyncObj)
                         {
                             _activeRequests.Add(quicStream, requestStream);
@@ -237,7 +239,7 @@ namespace System.Net.Http
                 {
                     throw new HttpRequestException(SR.net_http_request_aborted, null, RequestRetryType.RetryOnConnectionFailure);
                 }
-
+                Console.WriteLine("H3 1");
                 requestStream!.StreamId = quicStream.Id;
 
                 bool goAway;
@@ -252,8 +254,16 @@ namespace System.Net.Http
                 }
 
                 if (NetEventSource.Log.IsEnabled()) Trace($"Sending request: {request}");
-
+                Console.WriteLine("H3 2");
+                var webtransSession = new Http3WebtransportSession(requestStream.quicStream);
+                Console.WriteLine("In http3conn are id " + requestStream.StreamId + " si quicul " + requestStream.quicStream.Id);
+                bool newWTSession = WTManager!.addSession(requestStream.quicStream, webtransSession);
+                if(!newWTSession)
+                {
+                    Console.Write("A new error should be thrown");
+                }
                 Task<HttpResponseMessage> responseTask = requestStream.SendAsync(cancellationToken);
+                Console.WriteLine("H3 3");
 
                 if (request.IsWebTransportH3Request())
                 {
@@ -262,20 +272,23 @@ namespace System.Net.Http
                     {
                         if (response.Headers.Contains(Http3WebtransportSession.VersionHeaderPrefix))
                         {
-                            bool newWTSession = WTManager!.addSession(requestStream);
                             if(newWTSession)
                             {
-                                QuicStream? uniWTStream = await WTManager.OpenUnidirectionalStreamAsync(requestStream.StreamId).ConfigureAwait(false);
-                                QuicStream? biWTStream = await WTManager.OpenBidirectionalStreamAsync(requestStream.StreamId).ConfigureAwait(false);
-                                string s = "Ana are mere";
-                                byte[] bytes = Encoding.ASCII.GetBytes(s);
-                                await uniWTStream!.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
-                                s = "Ana n are mere deloc";
-                                bytes = Encoding.ASCII.GetBytes(s);
-                                await biWTStream!.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
-                                byte[] bytes2 = new byte[100];
-                                await biWTStream.ReadAsync(bytes2, cancellationToken).ConfigureAwait(false);
-                                Console.Write("here it starts :" + Encoding.ASCII.GetString(bytes2));
+                                Console.WriteLine("In http3conn in sesiune are id " + webtransSession.id);
+                                webtransSession.isEstablished.SetResult();
+                                response.Content = new WebtransportHttpContent(webtransSession);
+
+                                /* QuicStream? uniWTStream = await WTManager.OpenUnidirectionalStreamAsync(requestStream.StreamId).ConfigureAwait(false);
+                                 QuicStream? biWTStream = await WTManager.OpenBidirectionalStreamAsync(requestStream.StreamId).ConfigureAwait(false);
+                                 string s = "Ana are mere";
+                                 byte[] bytes = Encoding.ASCII.GetBytes(s);
+                                 await uniWTStream!.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
+                                 s = "Ana n are mere deloc";
+                                 bytes = Encoding.ASCII.GetBytes(s);
+                                 await biWTStream!.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
+                                 byte[] bytes2 = new byte[100];
+                                 await biWTStream.ReadAsync(bytes2, cancellationToken).ConfigureAwait(false);
+                                 Console.Write("here it starts :" + Encoding.ASCII.GetString(bytes2));*/
                                 requestStream = null;
                                 return response;
                             }
@@ -438,6 +451,7 @@ namespace System.Net.Http
                 // Server MUST NOT abort our control stream, setup a continuation which will react accordingly
                 _ = _clientControl.WritesClosed.ContinueWith(t =>
                 {
+                    Console.WriteLine("N ar trebui sa intru aici");
                     if (t.Exception?.InnerException is QuicException ex && ex.QuicError == QuicError.StreamAborted)
                     {
                         Abort(HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.ClosedCriticalStream));
@@ -520,138 +534,149 @@ namespace System.Net.Http
         private async Task ProcessServerStreamAsync(QuicStream stream)
         {
             ArrayBuffer buffer = default;
+            QuicStream? quicStream = stream;
 
             try
             {
-                await using (stream.ConfigureAwait(false))
+                buffer = new ArrayBuffer(initialSize: 32, usePool: true);
+
+                int bytesRead;
+
+                try
                 {
+                    bytesRead = await stream.ReadAsync(buffer.AvailableMemory, CancellationToken.None).ConfigureAwait(false);
+                }
+                catch (QuicException ex) when (ex.QuicError == QuicError.StreamAborted)
+                {
+                    // Treat identical to receiving 0. See below comment.
+                    bytesRead = 0;
+                }
 
-                    buffer = new ArrayBuffer(initialSize: 32, usePool: true);
+                if (bytesRead == 0)
+                {
+                    // https://quicwg.org/base-drafts/draft-ietf-quic-http.html#name-unidirectional-streams
+                    // A sender can close or reset a unidirectional stream unless otherwise specified. A receiver MUST
+                    // tolerate unidirectional streams being closed or reset prior to the reception of the unidirectional
+                    // stream header.
+                    return;
+                }
 
-                    int bytesRead;
-
-                    try
+                buffer.Commit(bytesRead);
+                long streamType;
+                VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan, out streamType, out bytesRead);
+                if (stream.CanWrite)
+                {
+                    if (EnableWebTransport == 1)
                     {
-                        bytesRead = await stream.ReadAsync(buffer.AvailableMemory, CancellationToken.None).ConfigureAwait(false);
-                    }
-                    catch (QuicException ex) when (ex.QuicError == QuicError.StreamAborted)
-                    {
-                        // Treat identical to receiving 0. See below comment.
-                        bytesRead = 0;
-                    }
-
-                    if (bytesRead == 0)
-                    {
-                        // https://quicwg.org/base-drafts/draft-ietf-quic-http.html#name-unidirectional-streams
-                        // A sender can close or reset a unidirectional stream unless otherwise specified. A receiver MUST
-                        // tolerate unidirectional streams being closed or reset prior to the reception of the unidirectional
-                        // stream header.
-                        return;
-                    }
-
-                    buffer.Commit(bytesRead);
-                    long streamType;
-                    VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan, out streamType, out bytesRead);
-                    if (stream.CanWrite)
-                    {
-                        if (EnableWebTransport == 1)
+                        if(streamType == (long)Http3StreamType.WebTransportBidirectional)
                         {
-                            if(streamType == (long)Http3StreamType.WebTransportBidirectional)
-                            {
-                                Console.Write("Catched it nailed it bidir stream");
-                                long sessionId;
-                                VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan.Slice(bytesRead), out sessionId, out bytesRead);
-                                buffer.Commit(bytesRead);
-                                WTManager!.AcceptServerStream(stream, sessionId);
-                                return;
-                            }
-                        }
-                        // Server initiated bidirectional streams are either push streams or extensions, and we support neither.
-                        throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.StreamCreationError);
-
-                        }
-                    // Stream type is a variable-length integer, but we only check the first byte. There is no known type requiring more than 1 byte.
-                    switch (streamType)
-                    {
-                        case (byte)Http3StreamType.Control:
-                            if (Interlocked.Exchange(ref _haveServerControlStream, 1) != 0)
-                            {
-                                // A second control stream has been received.
-                                throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.StreamCreationError);
-                            }
-
-                            // Discard the stream type header.
-                            buffer.Discard(1);
-
-                            // Ownership of buffer is transferred to ProcessServerControlStreamAsync.
-                            ArrayBuffer bufferCopy = buffer;
-                            buffer = default;
-
-                            await ProcessServerControlStreamAsync(stream, bufferCopy).ConfigureAwait(false);
-                            return;
-                        case (byte)Http3StreamType.QPackDecoder:
-                            if (Interlocked.Exchange(ref _haveServerQpackDecodeStream, 1) != 0)
-                            {
-                                // A second QPack decode stream has been received.
-                                throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.StreamCreationError);
-                            }
-
-                            // The stream must not be closed, but we aren't using QPACK right now -- ignore.
-                            buffer.Dispose();
-                            await stream.CopyToAsync(Stream.Null).ConfigureAwait(false);
-                            return;
-                        case (byte)Http3StreamType.QPackEncoder:
-                            if (Interlocked.Exchange(ref _haveServerQpackEncodeStream, 1) != 0)
-                            {
-                                // A second QPack encode stream has been received.
-                                throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.StreamCreationError);
-                            }
-
-                            // We haven't enabled QPack in our SETTINGS frame, so we shouldn't receive any meaningful data here.
-                            // However, the standard says the stream must not be closed for the lifetime of the connection. Just ignore any data.
-                            buffer.Dispose();
-                            await stream.CopyToAsync(Stream.Null).ConfigureAwait(false);
-                            return;
-                        case (byte)Http3StreamType.Push:
-                            // We don't support push streams.
-                            // Because no maximum push stream ID was negotiated via a MAX_PUSH_ID frame, server should not have sent this. Abort the connection with H3_ID_ERROR.
-                            throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.IdError);
-                        case (long)Http3StreamType.WebTransportUnidirectional:
+                            Console.Write("Catched it nailed it bidir stream" + stream.Id + " " + stream.CanRead);
                             long sessionId;
                             VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan.Slice(bytesRead), out sessionId, out bytesRead);
-                            //buffer.Commit(bytesRead);
-                            WTManager!.AcceptServerStream(stream, sessionId);
-                            return;
-                            //throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.IdError);
-                        default:
-                            // Unknown stream type. Per spec, these must be ignored and aborted but not be considered a connection-level error.
-
-                            if (NetEventSource.Log.IsEnabled())
+                            buffer.Commit(bytesRead);
+                            bool accepted = await WTManager!.AcceptServerStream(stream, sessionId).ConfigureAwait(false);
+                            if (accepted is false)
                             {
-                                // Read the rest of the integer, which might be more than 1 byte, so we can log it.
+                                Console.Write("RIPPPP");
+                            }
+                            quicStream = null;
+                            return;
+                        }
+                    }
+                    // Server initiated bidirectional streams are either push streams or extensions, and we support neither.
+                    throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.StreamCreationError);
 
-                                long unknownStreamType;
-                                while (!VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan, out unknownStreamType, out _))
+                }
+                // Stream type is a variable-length integer, but we only check the first byte. There is no known type requiring more than 1 byte.
+                switch (streamType)
+                {
+                    case (byte)Http3StreamType.Control:
+                        if (Interlocked.Exchange(ref _haveServerControlStream, 1) != 0)
+                        {
+                            // A second control stream has been received.
+                            throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.StreamCreationError);
+                        }
+
+                        // Discard the stream type header.
+                        buffer.Discard(1);
+
+                        // Ownership of buffer is transferred to ProcessServerControlStreamAsync.
+                        ArrayBuffer bufferCopy = buffer;
+                        buffer = default;
+                        quicStream = null;
+                        await ProcessServerControlStreamAsync(stream, bufferCopy).ConfigureAwait(false);
+                        return;
+                    case (byte)Http3StreamType.QPackDecoder:
+                        if (Interlocked.Exchange(ref _haveServerQpackDecodeStream, 1) != 0)
+                        {
+                            // A second QPack decode stream has been received.
+                            throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.StreamCreationError);
+                        }
+
+                        // The stream must not be closed, but we aren't using QPACK right now -- ignore.
+                        buffer.Dispose();
+                        await stream.CopyToAsync(Stream.Null).ConfigureAwait(false);
+                        return;
+                    case (byte)Http3StreamType.QPackEncoder:
+                        if (Interlocked.Exchange(ref _haveServerQpackEncodeStream, 1) != 0)
+                        {
+                            // A second QPack encode stream has been received.
+                            throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.StreamCreationError);
+                        }
+
+                        // We haven't enabled QPack in our SETTINGS frame, so we shouldn't receive any meaningful data here.
+                        // However, the standard says the stream must not be closed for the lifetime of the connection. Just ignore any data.
+                        buffer.Dispose();
+                        await stream.CopyToAsync(Stream.Null).ConfigureAwait(false);
+                        return;
+                    case (byte)Http3StreamType.Push:
+                        // We don't support push streams.
+                        // Because no maximum push stream ID was negotiated via a MAX_PUSH_ID frame, server should not have sent this. Abort the connection with H3_ID_ERROR.
+                        throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.IdError);
+                    case (long)Http3StreamType.WebTransportUnidirectional:
+                        long sessionId;
+
+                        VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan.Slice(bytesRead), out sessionId, out bytesRead);
+                        Console.Write("Catched it nailed it unidir stream" + stream.Id + " " + sessionId + " " + stream.CanRead);
+                        quicStream = null;
+
+                        //buffer.Commit(bytesRead);
+                        bool accepted = await WTManager!.AcceptServerStream(stream, sessionId).ConfigureAwait(false);
+                        if (accepted is false)
+                        {
+                            Console.Write("RIPPPP");
+                        }
+
+                        return;
+                        //throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.IdError);
+                    default:
+                        // Unknown stream type. Per spec, these must be ignored and aborted but not be considered a connection-level error.
+
+                        if (NetEventSource.Log.IsEnabled())
+                        {
+                            // Read the rest of the integer, which might be more than 1 byte, so we can log it.
+
+                            long unknownStreamType;
+                            while (!VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan, out unknownStreamType, out _))
+                            {
+                                buffer.EnsureAvailableSpace(VariableLengthIntegerHelper.MaximumEncodedLength);
+                                bytesRead = await stream.ReadAsync(buffer.AvailableMemory, CancellationToken.None).ConfigureAwait(false);
+
+                                if (bytesRead == 0)
                                 {
-                                    buffer.EnsureAvailableSpace(VariableLengthIntegerHelper.MaximumEncodedLength);
-                                    bytesRead = await stream.ReadAsync(buffer.AvailableMemory, CancellationToken.None).ConfigureAwait(false);
-
-                                    if (bytesRead == 0)
-                                    {
-                                        unknownStreamType = -1;
-                                        break;
-                                    }
-
-                                    buffer.Commit(bytesRead);
+                                    unknownStreamType = -1;
+                                    break;
                                 }
 
-                                NetEventSource.Info(this, $"Ignoring server-initiated stream of unknown type {unknownStreamType}.");
+                                buffer.Commit(bytesRead);
                             }
 
-                            stream.Abort(QuicAbortDirection.Read, (long)Http3ErrorCode.StreamCreationError);
-                            stream.Dispose();
-                            return;
-                    }
+                            NetEventSource.Info(this, $"Ignoring server-initiated stream of unknown type {unknownStreamType}.");
+                        }
+
+                        stream.Abort(QuicAbortDirection.Read, (long)Http3ErrorCode.StreamCreationError);
+                        stream.Dispose();
+                        return;
                 }
             }
             catch (Exception ex)
@@ -660,6 +685,12 @@ namespace System.Net.Http
             }
             finally
             {
+                if (quicStream != null)
+                {
+                    await quicStream.DisposeAsync().ConfigureAwait(false);
+                    Console.WriteLine("DISPAAAAR????" + quicStream.Id);
+
+                }
                 buffer.Dispose();
             }
         }
@@ -820,7 +851,7 @@ namespace System.Net.Http
                             if (settingValue != 0 && settingValue != 1)
                                 throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.SettingsError);
                             _enableWebTransport = (int)settingValue;
-                            WTManager = new Http3WebtransportManager(this);
+                            WTManager = new Http3WebtransportManager(this.QuicConnection!);
                             break;
                         case Http3SettingType.ReservedHttp2EnablePush:
                         case Http3SettingType.ReservedHttp2MaxConcurrentStreams:

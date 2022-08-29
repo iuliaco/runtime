@@ -221,7 +221,7 @@ namespace System.Net.Test.Common
 
         public async Task SendDataStreamAsync(byte[] payload)
         {
-            await _stream.WriteAsync(payload.AsMemory());
+            await _stream.WriteAsync(payload.AsMemory(), true);
         }
 
 

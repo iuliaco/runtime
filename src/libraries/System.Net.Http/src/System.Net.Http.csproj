@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <WindowsRID>win</WindowsRID>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -120,6 +120,7 @@
     <Compile Include="System\Net\Http\Headers\UriHeaderParser.cs" />
     <Compile Include="System\Net\Http\Headers\ViaHeaderValue.cs" />
     <Compile Include="System\Net\Http\Headers\WarningHeaderValue.cs" />
+    <Compile Include="System\Net\Http\SocketsHttpHandler\Http3WebtransportSession.cs" />
     <Compile Include="System\Net\Http\SocketsHttpHandler\SocketsHttpPlaintextStreamFilterContext.cs" />
     <Compile Include="$(CommonPath)DisableRuntimeMarshalling.cs"
              Link="Common\DisableRuntimeMarshalling.cs" />
@@ -180,7 +181,6 @@
     <Compile Include="System\Net\Http\SocketsHttpHandler\Http3Connection.cs" />
     <Compile Include="System\Net\Http\SocketsHttpHandler\Http3RequestStream.cs" />
     <Compile Include="System\Net\Http\SocketsHttpHandler\Http3WebtransportManager.cs" />
-    <Compile Include="System\Net\Http\SocketsHttpHandler\Http3WebtransportSession.cs" />
     <Compile Include="System\Net\Http\SocketsHttpHandler\HttpAuthenticatedConnectionHandler.cs" />
     <Compile Include="System\Net\Http\SocketsHttpHandler\HttpAuthority.cs" />
     <Compile Include="System\Net\Http\SocketsHttpHandler\HttpConnection.cs" />

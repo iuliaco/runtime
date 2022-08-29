@@ -6,10 +6,16 @@
     <Compile Include="System.Net.Http.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\System.Net.Quic\src\System.Net.Quic.csproj" />
     <ProjectReference Include="..\..\System.Runtime\ref\System.Runtime.csproj" />
     <ProjectReference Include="..\..\System.Net.Primitives\ref\System.Net.Primitives.csproj" />
     <ProjectReference Include="..\..\System.Net.Sockets\ref\System.Net.Sockets.csproj" />
     <ProjectReference Include="..\..\System.Net.Security\ref\System.Net.Security.csproj" />
     <ProjectReference Include="..\..\System.Diagnostics.DiagnosticSource\ref\System.Diagnostics.DiagnosticSource.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="System.Threading.Channels">
+      <HintPath>..\..\..\..\artifacts\bin\microsoft.netcore.app.ref\ref\net7.0\System.Threading.Channels.dll</HintPath>
+    </Reference>
   </ItemGroup>
 </Project>

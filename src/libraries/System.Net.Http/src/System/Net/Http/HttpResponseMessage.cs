@@ -37,6 +37,9 @@ namespace System.Net.Http
         }
 
         internal void SetVersionWithoutValidation(Version value) => _version = value;
+#if TARGET_WINDOWS_LINUX_MACOS
+        internal void SetWebtransportWithoutValidation(Http3WebtransportSession value) => _webtransportSession = value;
+#endif
 
         [AllowNull]
         public HttpContent Content
@@ -207,7 +210,7 @@ namespace System.Net.Http
             return sb.ToString();
         }
 
-        #region IDisposable Members
+#region IDisposable Members
 
         protected virtual void Dispose(bool disposing)
         {
@@ -226,7 +229,7 @@ namespace System.Net.Http
             GC.SuppressFinalize(this);
         }
 
-        #endregion
+#endregion
 
         private void CheckDisposed()
         {
