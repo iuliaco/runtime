@@ -212,11 +212,10 @@ namespace System.Net.Test.Common
             }
         }
 
-        public async Task<byte[]> ReadDataStreamAsync()
+        public async Task<int> ReadDataStreamAsync(byte[] payload)
         {
-            byte[] payload = new byte[1000];
             int bytesRead = await _stream.ReadAsync(payload.AsMemory(0)).ConfigureAwait(false);
-            return payload;
+            return bytesRead;
         }
 
         public async Task SendDataStreamAsync(byte[] payload)

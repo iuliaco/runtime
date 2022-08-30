@@ -188,21 +188,28 @@ namespace System.Net.Http
             // Allocate an active request
             QuicStream? quicStream = null;
             Http3RequestStream? requestStream = null;
-
+            Console.Write("Aici intru");
             // todo add await
-            if (request.IsWebTransportH3Request())
-            {
-                await _expectedSettingsFrameProcessed.Task.ConfigureAwait(false);
-                if (EnableWebTransport == 0)
-                {
-                    //TODO: should create a new exception message - on next steps
-                    HttpRequestException exception = new(SR.net_unsupported_extended_connect);
-                    throw exception;
-                }
-            }
+
 
             try
             {
+                if (request.IsWebTransportH3Request())
+                {
+                    Console.Write("Aici intru 2");
+
+                    await _expectedSettingsFrameProcessed.Task.ConfigureAwait(false);
+                    Console.Write("Aici intru 3");
+
+                    if (EnableWebTransport == 0)
+                    {
+                        Console.Write("Error should be thrown");
+
+                        //TODO: should create a new exception message - on next steps
+                        HttpRequestException exception = new(SR.net_unsupported_webtransport);
+                        throw exception;
+                    }
+                }
                 try
                 {
                     QuicConnection? conn = _connection;
@@ -255,47 +262,32 @@ namespace System.Net.Http
 
                 if (NetEventSource.Log.IsEnabled()) Trace($"Sending request: {request}");
                 Console.WriteLine("H3 2");
-                var webtransSession = new Http3WebtransportSession(requestStream.quicStream);
-                Console.WriteLine("In http3conn are id " + requestStream.StreamId + " si quicul " + requestStream.quicStream.Id);
-                bool newWTSession = WTManager!.addSession(requestStream.quicStream, webtransSession);
-                if(!newWTSession)
-                {
-                    Console.Write("A new error should be thrown");
-                }
-                Task<HttpResponseMessage> responseTask = requestStream.SendAsync(cancellationToken);
-                Console.WriteLine("H3 3");
-
+                Http3WebtransportSession webtransportSession;
                 if (request.IsWebTransportH3Request())
                 {
-                    var response = await responseTask.ConfigureAwait(false);
+                    webtransportSession = new Http3WebtransportSession(requestStream.quicStream);
+                    Console.WriteLine("In http3conn are id " + requestStream.StreamId + " si quicul " + requestStream.quicStream.Id);
+                    bool newWTSession = WTManager!.addSession(requestStream.quicStream, webtransportSession);
+                    if (!newWTSession)
+                    {
+                        Console.Write("A new error should be thrown");
+                    }
+                    Task<HttpResponseMessage> responseWebtransportTask = requestStream.SendAsync(cancellationToken);
+                    Console.WriteLine("H3 3");
+                    var response = await responseWebtransportTask.ConfigureAwait(false);
                     if (response.IsSuccessStatusCode)
                     {
                         if (response.Headers.Contains(Http3WebtransportSession.VersionHeaderPrefix))
                         {
-                            if(newWTSession)
-                            {
-                                Console.WriteLine("In http3conn in sesiune are id " + webtransSession.id);
-                                webtransSession.isEstablished.SetResult();
-                                response.Content = new WebtransportHttpContent(webtransSession);
-
-                                /* QuicStream? uniWTStream = await WTManager.OpenUnidirectionalStreamAsync(requestStream.StreamId).ConfigureAwait(false);
-                                 QuicStream? biWTStream = await WTManager.OpenBidirectionalStreamAsync(requestStream.StreamId).ConfigureAwait(false);
-                                 string s = "Ana are mere";
-                                 byte[] bytes = Encoding.ASCII.GetBytes(s);
-                                 await uniWTStream!.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
-                                 s = "Ana n are mere deloc";
-                                 bytes = Encoding.ASCII.GetBytes(s);
-                                 await biWTStream!.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
-                                 byte[] bytes2 = new byte[100];
-                                 await biWTStream.ReadAsync(bytes2, cancellationToken).ConfigureAwait(false);
-                                 Console.Write("here it starts :" + Encoding.ASCII.GetString(bytes2));*/
-                                requestStream = null;
-                                return response;
-                            }
+                            Console.WriteLine("In http3conn in sesiune are id " + webtransportSession!.id);
+                            response.Content = new WebtransportHttpContent(webtransportSession);
+                            requestStream = null;
+                            return response;
                         }
                         else
                         {
-                            HttpRequestException exception = new(SR.net_unsupported_extended_connect);
+                            await webtransportSession.DisposeSessionWebtransportStreams().ConfigureAwait(false);
+                            HttpRequestException exception = new(SR.net_webtransport_server_rejected);
                             throw exception;
                         }
 
@@ -303,11 +295,12 @@ namespace System.Net.Http
                     else
                     {
                         // the rfc does not specify what should be done if the server refuses a webtrans connect request
-                        HttpRequestException exception = new(SR.net_unsupported_extended_connect);
+                        HttpRequestException exception = new(SR.net_webtransport_server_rejected);
                         throw exception;
                     }
 
                 }
+                Task<HttpResponseMessage> responseTask = requestStream.SendAsync(cancellationToken);
 
                 // null out requestStream to avoid disposing in finally block. It is now in charge of disposing itself.
                 requestStream = null;
@@ -544,7 +537,10 @@ namespace System.Net.Http
 
                 try
                 {
-                    bytesRead = await stream.ReadAsync(buffer.AvailableMemory, CancellationToken.None).ConfigureAwait(false);
+                    byte[] header = new byte[3];
+                    bytesRead = await stream.ReadAsync(header, CancellationToken.None).ConfigureAwait(false);
+                    header.CopyTo(buffer.AvailableMemory);
+                    Console.WriteLine("No. of bytes read in process " + bytesRead);
                 }
                 catch (QuicException ex) when (ex.QuicError == QuicError.StreamAborted)
                 {
@@ -574,7 +570,7 @@ namespace System.Net.Http
                             long sessionId;
                             VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan.Slice(bytesRead), out sessionId, out bytesRead);
                             buffer.Commit(bytesRead);
-                            bool accepted = await WTManager!.AcceptServerStream(stream, sessionId).ConfigureAwait(false);
+                            bool accepted = WTManager!.AcceptServerStream(stream, sessionId);
                             if (accepted is false)
                             {
                                 Console.Write("RIPPPP");
@@ -641,7 +637,7 @@ namespace System.Net.Http
                         quicStream = null;
 
                         //buffer.Commit(bytesRead);
-                        bool accepted = await WTManager!.AcceptServerStream(stream, sessionId).ConfigureAwait(false);
+                        bool accepted = WTManager!.AcceptServerStream(stream, sessionId);
                         if (accepted is false)
                         {
                             Console.Write("RIPPPP");
@@ -862,6 +858,8 @@ namespace System.Net.Http
                             throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.SettingsError);
                     }
                 }
+                Console.Write("I am here 2");
+
                 _expectedSettingsFrameProcessed.TrySetResult();
             }
 

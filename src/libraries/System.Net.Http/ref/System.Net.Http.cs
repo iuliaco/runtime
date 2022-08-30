@@ -313,7 +313,6 @@ namespace System.Net.Http
     {
         public long id { get { throw null; } }
         public bool getStreamStatus()  { throw null; }
-        public System.Threading.Tasks.TaskCompletionSource isEstablished = new TaskCompletionSource();
         public System.Threading.Channels.Channel<System.Net.Quic.QuicStream> incomingStreamsQueue { get { throw null; } }
         public Http3WebtransportSession(System.Net.Quic.QuicStream connectStream) { }
         public static System.Threading.Tasks.ValueTask<Http3WebtransportSession?> connectAsync(Uri uri, HttpClientHandler? handler, CancellationToken cancellationToken) { throw null; }

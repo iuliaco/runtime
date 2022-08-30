@@ -91,5 +91,15 @@ namespace System.Net.Http
         /// The requested operation cannot be served over HTTP/3. The peer should retry over HTTP/1.1.
         /// </summary>
         VersionFallback = 0x110,
+        /// <summary>
+        /// H3_WEBTRANSPORT_BUFFERED_STREAM_REJECTED (0x3994bd84):
+        /// WebTransport data stream rejected due to lack of associated session.
+        /// </summary>
+        WebtransportBufferedStreamRejected = 0x3994bd84,
+        /// <summary>
+        /// H3_WEBTRANSPORT_SESSION_GONE (0x170d7b68):
+        /// WebTransport data stream aborted because the associated WebTransport session has been closed.
+        /// </summary>
+        WebtransportSessionGone = 0x170d7b68,
     }
 }

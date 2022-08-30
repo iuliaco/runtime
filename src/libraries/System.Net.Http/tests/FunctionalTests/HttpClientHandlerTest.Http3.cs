@@ -136,11 +136,11 @@ namespace System.Net.Http.Functional.Tests
                     // var wtServerUnidirectionalStream = await connection.OpenUnidirectionalWTStreamAsync(sessionId);
                     // var wtServerBidirectionalStream = await connection.OpenBidirectionalWTStreamAsync(sessionId);
                     //  wtServerUnidirectionalStream. 
-                    byte[] bytes;// = Encoding.ASCII.GetBytes(s);
+                    byte[] bytes = new byte[50];// = Encoding.ASCII.GetBytes(s);
 
-                    bytes = await wtClientUnidirectionalStream.ReadDataStreamAsync();
+                    await wtClientUnidirectionalStream.ReadDataStreamAsync(bytes);
                     Console.Write(Encoding.ASCII.GetString(bytes));
-                    bytes = await wtClientBidirectionalStream.ReadDataStreamAsync();
+                    await wtClientBidirectionalStream.ReadDataStreamAsync(bytes);
                     Console.Write(Encoding.ASCII.GetString(bytes));
                     bytes = bytes.Reverse().ToArray();
                     Console.Write("Reversed?? " + Encoding.ASCII.GetString(bytes));
@@ -203,27 +203,15 @@ namespace System.Net.Http.Functional.Tests
                 await help.ReadAsync(bytes, CancellationToken.None).ConfigureAwait(false);
 
                 Console.WriteLine(Encoding.ASCII.GetString(bytes));
-
-                //  QuicStream help2 = await session.getIncomingWTStreamFromServerAsync();
-                //  Console.WriteLine("Cred ca dispar toate streamurile=======================================" + help2.Id + " " + help2.CanWrite);
-                // await help2.ReadAsync(bytes, CancellationToken.None).ConfigureAwait(false);
             });
 
             await new[] { clientTask }.WhenAllOrAnyFailed(20_000);
-
-
-
         }
 
         [Fact]
         public async Task ClientSettingsWebTransportAPI()
         {
-            X509Certificate2 certificate = TestHelper.CreateServerSelfSignedCertificate();
-
             using Http3LoopbackServer server = CreateHttp3LoopbackServer();
-
-
-          //  using var listener = new TestUtilities.TestEventListener(_output, TestUtilities.TestEventListener.NetworkingEvents);
 
             Task serverTask = Task.Run(async () =>
             {
@@ -239,30 +227,30 @@ namespace System.Net.Http.Functional.Tests
                 headers.Add(new HttpHeaderData("Content-Length", contentLength.ToString(CultureInfo.InvariantCulture)));
                 headers.Add(header);
                 headers.Append(header);
-                Console.WriteLine("1");
 
                 (Http3LoopbackStream settingsStream, Http3LoopbackStream stream) = await connection.AcceptControlAndRequestStreamAsync();
-                Console.WriteLine("2");
 
                 await using (settingsStream)
                 await using (stream)
                 {
-                    Console.WriteLine("3");
-
                     Assert.Equal(1, connection.EnableWebtransport);
                     await stream.ReadRequestDataAsync();
-                    Console.WriteLine("4");
-
                     await stream.SendResponseAsync(HttpStatusCode.OK, headers);
-                    Console.WriteLine("5");
                     //  await Task.Delay(2_000);
 
                     for (int i = 0; i < 20; i++)
                     {
                         var wtServerBidirectionalStream = await connection.OpenBidirectionalWTStreamAsync(stream.StreamId);
+                        
                         byte[] recvBytes = new byte[18];
-                        recvBytes = await wtServerBidirectionalStream.ReadDataStreamAsync();
-                        Console.WriteLine("AM PRIMIT SERVER" + Encoding.ASCII.GetString(recvBytes));
+                        int bytesRead = 0;
+                        bytesRead = await wtServerBidirectionalStream.ReadDataStreamAsync(recvBytes);
+                        while(bytesRead != 0)
+                        {
+                            Console.WriteLine("AM PRIMIT SERVER " + Encoding.ASCII.GetString(recvBytes).Substring(0, bytesRead));
+                            bytesRead = await wtServerBidirectionalStream.ReadDataStreamAsync(recvBytes);
+
+                        }
                         string s = "Ana nu are mere " + i;
                         recvBytes = Encoding.ASCII.GetBytes(s);
                         await wtServerBidirectionalStream.SendDataStreamAsync(recvBytes).ConfigureAwait(false);
@@ -276,12 +264,8 @@ namespace System.Net.Http.Functional.Tests
                         string s = "Ana nu are mere " + i;
                         recvBytes = Encoding.ASCII.GetBytes(s);
                         await wtServerUnidirectionalStream.SendDataStreamAsync(recvBytes).ConfigureAwait(false);
-                        //await Task.Delay(2_000);
-
                     }
                 }
-
-
             });
 
             Task clientTask = Task.Run(async () =>
@@ -289,7 +273,6 @@ namespace System.Net.Http.Functional.Tests
                 using HttpClient client = CreateHttpClient();
 
                 Http3WebtransportSession session = await Http3WebtransportSession.connectAsync(server.Address, CreateHttpClientHandler(), CancellationToken.None);
-                Console.WriteLine("LOOOOOL    Aici are id ul " + session.id);
 
                 for (int i = 0; i < 20; i++)
                 {
@@ -297,33 +280,154 @@ namespace System.Net.Http.Functional.Tests
                     string s = "Ana are mere " + i;
                     byte[] bytes = new byte[20];
                     bytes = Encoding.ASCII.GetBytes(s);
-                    await help.WriteAsync(bytes, CancellationToken.None).ConfigureAwait(false);
-                    await help.ReadAsync(bytes, CancellationToken.None).ConfigureAwait(false);
-                    Console.WriteLine("AM PRIMIT CLIENT" + Encoding.ASCII.GetString(bytes));
-                    await help.ReadAsync(bytes, CancellationToken.None).ConfigureAwait(false);
-                    Console.WriteLine("AM PRIMIT CLIENT" + Encoding.ASCII.GetString(bytes));
+                    await help.WriteAsync(bytes, true, CancellationToken.None).ConfigureAwait(false);
+                    bytes = new byte[20];
+                    int bytesRead = await help.ReadAsync(bytes, CancellationToken.None).ConfigureAwait(false);
+                    while(bytesRead != 0)
+                    {
+                        Console.WriteLine("AM PRIMIT CLIENT " + Encoding.ASCII.GetString(bytes).Substring(0, bytesRead));
+                        bytes = new byte[20];
+                        bytesRead = await help.ReadAsync(bytes, CancellationToken.None).ConfigureAwait(false);
+                    }
+
                     await help.DisposeAsync();
                 }
 
                 for (int i = 0; i < 10; i++)
                 {
-                    Console.WriteLine("Second time in client");
 
                     QuicStream help = await session.getIncomingWTStreamFromServerAsync();
                     byte[] bytes = new byte[20];
-                   // await help.ReadAsync(bytes, CancellationToken.None).ConfigureAwait(false);
-                    //Console.WriteLine("AM PRIMIT CLIENT UNIDIRECTIONAL" + Encoding.ASCII.GetString(bytes));
-                   await help.ReadAsync(bytes, CancellationToken.None).ConfigureAwait(false);
-                    Console.WriteLine("AM PRIMIT CLIENT UNIDIRECTIONAL " + Encoding.ASCII.GetString(bytes));
+                    int bytesRead = await help.ReadAsync(bytes, CancellationToken.None).ConfigureAwait(false);
+                    while (bytesRead != 0)
+                    {
+                        Console.WriteLine("AM PRIMIT CLIENT UNIDIRECTIONAL " + Encoding.ASCII.GetString(bytes).Substring(0, bytesRead));
+                        bytes = new byte[20];
+                        bytesRead = await help.ReadAsync(bytes, CancellationToken.None).ConfigureAwait(false);
+                    }
                     await help.DisposeAsync();
                 }
-
-
-
-                // await Task.Delay(10_000);
             });
 
-            await new[] { clientTask, serverTask }.WhenAllOrAnyFailed(50_000);
+            await new[] { clientTask, serverTask }.WhenAllOrAnyFailed(20_000);
+        }
+
+        [Fact]
+        public async Task BadWebtransportStreamError()
+        {
+            using Http3LoopbackServer server = CreateHttp3LoopbackServer();
+
+            Task serverTask = Task.Run(async () =>
+            {
+                ICollection<(long settingId, long settingValue)> settings = new LinkedList<(long settingId, long settingValue)>();
+                settings.Add((Http3LoopbackStream.EnableWebTransport, 1));
+                await using Http3LoopbackConnection connection = (Http3LoopbackConnection)await server.EstablishSettingsFrameGenericConnectionAsync(settings);
+                var headers = new List<HttpHeaderData>();
+                int contentLength = 2 * 1024 * 1024;
+                HttpHeaderData header = new HttpHeaderData("sec-webtransport-http3-draft", "draft02");
+                headers.Add(new HttpHeaderData("Content-Length", contentLength.ToString(CultureInfo.InvariantCulture)));
+                headers.Add(header);
+                headers.Append(header);
+
+                (Http3LoopbackStream settingsStream, Http3LoopbackStream stream) = await connection.AcceptControlAndRequestStreamAsync();
+
+                await using (settingsStream)
+                await using (stream)
+                {
+                    Assert.Equal(1, connection.EnableWebtransport);
+                    await stream.ReadRequestDataAsync();
+                    await stream.SendResponseAsync(HttpStatusCode.OK, headers);
+                    
+                    var wtServerBidirectionalStream = await connection.OpenBidirectionalWTStreamAsync(stream.StreamId + 1);
+
+
+                }
+            });
+
+            Task clientTask = Task.Run(async () =>
+            {
+                Http3WebtransportSession session = await Http3WebtransportSession.connectAsync(server.Address, CreateHttpClientHandler(), CancellationToken.None);
+            });
+
+            await new[] { clientTask, serverTask }.WhenAllOrAnyFailed(20_000);
+        }
+
+        [Fact]
+        public async Task WebTransportWrongServerResponseHeader()
+        {
+            using Http3LoopbackServer server = CreateHttp3LoopbackServer();
+
+            Task serverTask = Task.Run(async () =>
+            {
+                ICollection<(long settingId, long settingValue)> settings = new LinkedList<(long settingId, long settingValue)>();
+                settings.Add((Http3LoopbackStream.EnableWebTransport, 1));
+                await using Http3LoopbackConnection connection = (Http3LoopbackConnection)await server.EstablishSettingsFrameGenericConnectionAsync(settings);
+                (Http3LoopbackStream settingsStream, Http3LoopbackStream stream) = await connection.AcceptControlAndRequestStreamAsync();
+
+                await using (settingsStream)
+                await using (stream)
+                {
+                    Assert.Equal(1, connection.EnableWebtransport);
+                    await stream.ReadRequestDataAsync();
+                    await stream.SendResponseAsync();
+                }
+            });
+
+            Task clientTask = Task.Run(async () =>
+            {
+                HttpRequestException ex = await Assert.ThrowsAsync<HttpRequestException>(async () => await Http3WebtransportSession.connectAsync(server.Address, CreateHttpClientHandler(), CancellationToken.None));
+            });
+
+            await new[] { clientTask, serverTask }.WhenAllOrAnyFailed(20_000);
+        }
+
+        [Fact]
+        public async Task WebTransportWrongServerResponseStatus()
+        {
+            using Http3LoopbackServer server = CreateHttp3LoopbackServer();
+
+            Task serverTask = Task.Run(async () =>
+            {
+                // full client check
+                ICollection<(long settingId, long settingValue)> settings = new LinkedList<(long settingId, long settingValue)>();
+                settings.Add((Http3LoopbackStream.EnableWebTransport, 1));
+                await using Http3LoopbackConnection connection = (Http3LoopbackConnection)await server.EstablishSettingsFrameGenericConnectionAsync(settings);
+                (Http3LoopbackStream settingsStream, Http3LoopbackStream stream) = await connection.AcceptControlAndRequestStreamAsync();
+
+                await using (settingsStream)
+                await using (stream)
+                {
+                    Assert.Equal(1, connection.EnableWebtransport);
+                    await stream.ReadRequestDataAsync();
+                    await stream.SendResponseAsync(HttpStatusCode.NotFound);
+                }
+            });
+
+            Task clientTask = Task.Run(async () =>
+            {
+                HttpRequestException ex = await Assert.ThrowsAsync<HttpRequestException>(async () => await Http3WebtransportSession.connectAsync(server.Address, CreateHttpClientHandler(), CancellationToken.None));
+            });
+
+            await new[] { clientTask, serverTask }.WhenAllOrAnyFailed(20_000);
+        }
+
+        [Fact]
+        public async Task WebTransportServerNotSupported()
+        {
+            using Http3LoopbackServer server = CreateHttp3LoopbackServer();
+
+            Task serverTask = Task.Run(async () =>
+            {
+                await using Http3LoopbackConnection connection = (Http3LoopbackConnection)await server.EstablishSettingsFrameGenericConnectionAsync();
+
+            });
+
+            Task clientTask = Task.Run(async () =>
+            {
+                HttpRequestException ex = await Assert.ThrowsAsync<HttpRequestException>(async () => await Http3WebtransportSession.connectAsync(server.Address, CreateHttpClientHandler(), CancellationToken.None));
+            });
+
+            await new[] { clientTask, serverTask }.WhenAllOrAnyFailed(20_000);
         }
 
         [Fact]
@@ -371,12 +475,12 @@ namespace System.Net.Http.Functional.Tests
                 var wtServerUnidirectionalStream = await connection.OpenUnidirectionalWTStreamAsync(sessionId);
                 var wtServerBidirectionalStream = await connection.OpenBidirectionalWTStreamAsync(sessionId);
                 //  wtServerUnidirectionalStream.
-                byte[] bytes;// = Encoding.ASCII.GetBytes(s);
+                byte[] bytes = new byte[35];// = Encoding.ASCII.GetBytes(s);
                 await Task.Delay(5_000);
 
-                bytes = await wtClientUnidirectionalStream.ReadDataStreamAsync();
+                await wtClientUnidirectionalStream.ReadDataStreamAsync(bytes);
                 Console.Write(Encoding.ASCII.GetString(bytes));
-                bytes = await wtClientBidirectionalStream.ReadDataStreamAsync();
+                await wtClientBidirectionalStream.ReadDataStreamAsync(bytes);
                 Console.Write(Encoding.ASCII.GetString(bytes));
                 bytes = bytes.Reverse().ToArray();
                 Console.Write("Reversed?? " + Encoding.ASCII.GetString(bytes));

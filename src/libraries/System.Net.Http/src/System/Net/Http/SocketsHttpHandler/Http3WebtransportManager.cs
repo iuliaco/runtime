@@ -37,7 +37,8 @@ namespace System.Net.Http
             return _sessions.TryAdd(connectStream.Id, webtransportSession);
         }
 
-        public async ValueTask<bool> AcceptServerStream(QuicStream stream, long sessionId)
+
+        public bool AcceptServerStream(QuicStream stream, long sessionId)
         {
             Http3WebtransportSession? session;
             Console.WriteLine(" SPEEER nuuuuu " + sessionId);
@@ -46,11 +47,9 @@ namespace System.Net.Http
             // https://datatracker.ietf.org/doc/html/draft-ietf-webtrans-http3#section-4
             if (session == null)
             {
-                Console.WriteLine("aici?????");
-                return false;
-                // throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.IdError);
+                Console.WriteLine("Throw error");
+                throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.WebtransportBufferedStreamRejected);
             }
-            await session.isEstablished.Task.ConfigureAwait(false);
             var sper = session.AcceptServerStream(stream);
             Console.WriteLine(" SPEEER " + sper);
             return sper;

@@ -100,6 +100,8 @@ namespace System.Net.Http
                 Http3ErrorCode.RequestIncomplete => "H3_REQUEST_INCOMPLETE",
                 Http3ErrorCode.ConnectError => "H3_CONNECT_ERROR",
                 Http3ErrorCode.VersionFallback => "H3_VERSION_FALLBACK",
+                Http3ErrorCode.WebtransportBufferedStreamRejected => "H3_WEBTRANSPORT_BUFFERED_STREAM_REJECTED",
+                Http3ErrorCode.WebtransportSessionGone => "H3_WEBTRANSPORT_SESSION_GONE",
                 _ => "(unknown error)"
             };
 #endif
