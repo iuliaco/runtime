@@ -196,10 +196,7 @@ namespace System.Net.Http
             {
                 if (request.IsWebTransportH3Request())
                 {
-                    Console.Write("Aici intru 2");
-
                     await _expectedSettingsFrameProcessed.Task.ConfigureAwait(false);
-                    Console.Write("Aici intru 3");
 
                     if (EnableWebTransport == 0)
                     {
@@ -246,7 +243,6 @@ namespace System.Net.Http
                 {
                     throw new HttpRequestException(SR.net_http_request_aborted, null, RequestRetryType.RetryOnConnectionFailure);
                 }
-                Console.WriteLine("H3 1");
                 requestStream!.StreamId = quicStream.Id;
 
                 bool goAway;
@@ -261,7 +257,6 @@ namespace System.Net.Http
                 }
 
                 if (NetEventSource.Log.IsEnabled()) Trace($"Sending request: {request}");
-                Console.WriteLine("H3 2");
                 Http3WebtransportSession webtransportSession;
                 if (request.IsWebTransportH3Request())
                 {
@@ -273,7 +268,6 @@ namespace System.Net.Http
                         Console.Write("A new error should be thrown");
                     }
                     Task<HttpResponseMessage> responseWebtransportTask = requestStream.SendAsync(cancellationToken);
-                    Console.WriteLine("H3 3");
                     var response = await responseWebtransportTask.ConfigureAwait(false);
                     if (response.IsSuccessStatusCode)
                     {
@@ -564,7 +558,8 @@ namespace System.Net.Http
                 {
                     if (EnableWebTransport == 1)
                     {
-                        if(streamType == (long)Http3StreamType.WebTransportBidirectional)
+                        // TODO: Mana
+                        if (streamType == (long)Http3StreamType.WebTransportBidirectional)
                         {
                             Console.Write("Catched it nailed it bidir stream" + stream.Id + " " + stream.CanRead);
                             long sessionId;
@@ -631,7 +626,7 @@ namespace System.Net.Http
                         throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.IdError);
                     case (long)Http3StreamType.WebTransportUnidirectional:
                         long sessionId;
-
+                        // TODO: Mana
                         VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan.Slice(bytesRead), out sessionId, out bytesRead);
                         Console.Write("Catched it nailed it unidir stream" + stream.Id + " " + sessionId + " " + stream.CanRead);
                         quicStream = null;
@@ -684,7 +679,6 @@ namespace System.Net.Http
                 if (quicStream != null)
                 {
                     await quicStream.DisposeAsync().ConfigureAwait(false);
-                    Console.WriteLine("DISPAAAAR????" + quicStream.Id);
 
                 }
                 buffer.Dispose();

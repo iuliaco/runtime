@@ -41,17 +41,16 @@ namespace System.Net.Http
         public bool AcceptServerStream(QuicStream stream, long sessionId)
         {
             Http3WebtransportSession? session;
-            Console.WriteLine(" SPEEER nuuuuu " + sessionId);
             _sessions.TryGetValue(sessionId, out session);
             // if no session with that id exists throw exception
             // https://datatracker.ietf.org/doc/html/draft-ietf-webtrans-http3#section-4
             if (session == null)
             {
+                // TODO: Mana
                 Console.WriteLine("Throw error");
                 throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.WebtransportBufferedStreamRejected);
             }
             var sper = session.AcceptServerStream(stream);
-            Console.WriteLine(" SPEEER " + sper);
             return sper;
         }
 
