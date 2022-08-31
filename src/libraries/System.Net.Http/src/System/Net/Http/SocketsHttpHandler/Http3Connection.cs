@@ -7,7 +7,6 @@ using System.Runtime.CompilerServices;
 using System.Runtime.Versioning;
 using System.Net.Quic;
 using System.IO;
-using System.Linq;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -167,7 +166,7 @@ namespace System.Net.Http
 
                     if (_clientControl != null)
                     {
-                        _clientControl.Dispose();
+                        await _clientControl.DisposeAsync().ConfigureAwait(false);
                         _clientControl = null;
                     }
 
@@ -306,12 +305,15 @@ namespace System.Net.Http
             catch (QuicException ex) when (ex.QuicError == QuicError.OperationAborted)
             {
                 // This will happen if we aborted _connection somewhere and we have pending OpenOutboundStreamAsync call.
-                Debug.Assert(_abortException is not null);
+                // note that _abortException may be null if we closed the connection in response to a GOAWAY frame
                 throw new HttpRequestException(SR.net_http_client_execution_error, _abortException, RequestRetryType.RetryOnConnectionFailure);
             }
             finally
             {
-                requestStream?.Dispose();
+                if (requestStream is not null)
+                {
+                    await requestStream.DisposeAsync().ConfigureAwait(false);
+                }
             }
         }
 
@@ -662,13 +664,15 @@ namespace System.Net.Http
                                 buffer.Commit(bytesRead);
                             }
 
-                            NetEventSource.Info(this, $"Ignoring server-initiated stream of unknown type {unknownStreamType}.");
-                        }
 
-                        stream.Abort(QuicAbortDirection.Read, (long)Http3ErrorCode.StreamCreationError);
-                        stream.Dispose();
-                        return;
+                            stream.Abort(QuicAbortDirection.Read, (long)Http3ErrorCode.StreamCreationError);
+                            return;
+                    }
                 }
+            }
+            catch (QuicException ex) when (ex.QuicError == QuicError.OperationAborted)
+            {
+                // ignore the exception, we have already closed the connection
             }
             catch (Exception ex)
             {
