@@ -38,7 +38,7 @@ namespace System.Net.Http
         }
 
 
-        public bool AcceptServerStream(QuicStream stream, long sessionId)
+        public void AcceptServerStream(QuicStream stream, long sessionId)
         {
             Http3WebtransportSession? session;
             _sessions.TryGetValue(sessionId, out session);
@@ -46,12 +46,11 @@ namespace System.Net.Http
             // https://datatracker.ietf.org/doc/html/draft-ietf-webtrans-http3#section-4
             if (session == null)
             {
-                // TODO: Mana
                 Console.WriteLine("Throw error");
-                throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.WebtransportBufferedStreamRejected);
+                stream.Abort(QuicAbortDirection.Both, (long)Http3ErrorCode.WebtransportBufferedStreamRejected);
+                return;
             }
-            var sper = session.AcceptServerStream(stream);
-            return sper;
+            session.AcceptServerStream(stream);
         }
 
      /*   public async ValueTask<QuicStream?> OpenUnidirectionalStreamAsync(long sessionId)

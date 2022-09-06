@@ -184,7 +184,7 @@ namespace System.Net.Test.Common
             return stream;
         }
 
-        public async Task<Http3LoopbackStream> AcceptWebtransportStreamAsync()
+        public async ValueTask<Http3LoopbackStream> AcceptWebtransportStreamAsync()
         {
             await EnsureControlStreamAcceptedAsync().ConfigureAwait(false);
 

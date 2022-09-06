@@ -310,6 +310,7 @@ namespace System.Net.Test.Common
 
             if (isFinal)
             {
+                Console.WriteLine("Gata");
                 _stream.CompleteWrites();
             }
         }

@@ -259,15 +259,19 @@ namespace System.Net.Http
                 Http3WebtransportSession webtransportSession;
                 if (request.IsWebTransportH3Request())
                 {
-                    webtransportSession = new Http3WebtransportSession(requestStream.quicStream);
+                    webtransportSession = new Http3WebtransportSession(this._connection!, requestStream.quicStream);
                     Console.WriteLine("In http3conn are id " + requestStream.StreamId + " si quicul " + requestStream.quicStream.Id);
                     bool newWTSession = WTManager!.addSession(requestStream.quicStream, webtransportSession);
                     if (!newWTSession)
                     {
                         Console.Write("A new error should be thrown");
                     }
+                    Console.WriteLine("http3conn 1");
                     Task<HttpResponseMessage> responseWebtransportTask = requestStream.SendAsync(cancellationToken);
+                    Console.WriteLine("http3conn 2");
                     var response = await responseWebtransportTask.ConfigureAwait(false);
+                    Console.WriteLine("http3conn 3");
+
                     if (response.IsSuccessStatusCode)
                     {
                         if (response.Headers.Contains(Http3WebtransportSession.VersionHeaderPrefix))
@@ -279,7 +283,7 @@ namespace System.Net.Http
                         }
                         else
                         {
-                            await webtransportSession.DisposeSessionWebtransportStreams().ConfigureAwait(false);
+                            await webtransportSession.AbortIncomingSessionWebtransportStreams((long)Http3ErrorCode.WebtransportBufferedStreamRejected).ConfigureAwait(false);
                             HttpRequestException exception = new(SR.net_webtransport_server_rejected);
                             throw exception;
                         }
@@ -287,7 +291,7 @@ namespace System.Net.Http
                     }
                     else
                     {
-                        // the rfc does not specify what should be done if the server refuses a webtrans connect request
+                        await webtransportSession.AbortIncomingSessionWebtransportStreams((long)Http3ErrorCode.WebtransportBufferedStreamRejected).ConfigureAwait(false);
                         HttpRequestException exception = new(SR.net_webtransport_server_rejected);
                         throw exception;
                     }
@@ -567,11 +571,7 @@ namespace System.Net.Http
                             long sessionId;
                             VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan.Slice(bytesRead), out sessionId, out bytesRead);
                             buffer.Commit(bytesRead);
-                            bool accepted = WTManager!.AcceptServerStream(stream, sessionId);
-                            if (accepted is false)
-                            {
-                                Console.Write("RIPPPP");
-                            }
+                            WTManager!.AcceptServerStream(stream, sessionId);
                             quicStream = null;
                             return;
                         }
@@ -634,11 +634,7 @@ namespace System.Net.Http
                         quicStream = null;
 
                         //buffer.Commit(bytesRead);
-                        bool accepted = WTManager!.AcceptServerStream(stream, sessionId);
-                        if (accepted is false)
-                        {
-                            Console.Write("RIPPPP");
-                        }
+                        WTManager!.AcceptServerStream(stream, sessionId);
 
                         return;
                         //throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.IdError);
@@ -664,10 +660,13 @@ namespace System.Net.Http
                                 buffer.Commit(bytesRead);
                             }
 
+                            NetEventSource.Info(this, $"Ignoring server-initiated stream of unknown type {unknownStreamType}.");
+                        }
 
-                            stream.Abort(QuicAbortDirection.Read, (long)Http3ErrorCode.StreamCreationError);
-                            return;
-                    }
+                        stream.Abort(QuicAbortDirection.Read, (long)Http3ErrorCode.StreamCreationError);
+                        return;
+
+
                 }
             }
             catch (QuicException ex) when (ex.QuicError == QuicError.OperationAborted)
