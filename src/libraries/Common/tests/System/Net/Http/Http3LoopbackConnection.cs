@@ -172,6 +172,7 @@ namespace System.Net.Test.Common
             {
                 quicStream = await _connection.AcceptInboundStreamAsync().ConfigureAwait(false);
             }
+
             var stream = new Http3LoopbackStream(quicStream);
 
             Assert.True(quicStream.CanWrite, "Expected writeable stream.");
@@ -223,6 +224,7 @@ namespace System.Net.Test.Common
             await wtStream.SendWTStreamHeaderAsync(Http3LoopbackStream.UniWTStream, sessionId);
             return wtStream;
         }
+
         public async Task<Http3LoopbackStream> OpenBidirectionalWTStreamAsync(long? sessionId)
         {
             Http3LoopbackStream wtStream = await OpenBidirectionalStreamAsync();

@@ -569,7 +569,6 @@ namespace System.Net.Http.Functional.Tests
 
                 var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
                 var stream = await response.Content.ReadAsStreamAsync();
-               
                 // We haven't finished sending the whole request, but we're disposing the response, which should turn into an exception on the server-side.
                 response.Dispose();
                 await serverTask;
