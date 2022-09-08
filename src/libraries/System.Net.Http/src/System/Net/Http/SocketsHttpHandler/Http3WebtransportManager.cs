@@ -55,6 +55,7 @@ namespace System.Net.Http
 
         public void DeleteSession(long id)
         {
+            Console.WriteLine("Ma scot singur hatz");
             sessions.TryRemove(id, out _);
         }
 
