@@ -38,6 +38,7 @@ namespace System.Net.Http
         {
             SingleWriter = true
         });
+
         private int _disposed;
         internal Http3WebtransportManager? _WTManager;
         internal void SetWTManager(Http3WebtransportManager? WTManager)
@@ -45,14 +46,13 @@ namespace System.Net.Http
             _WTManager = WTManager;
         }
 
-        public Channel<QuicStream> incomingStreamsQueue => _incomingStreamsQueue;
+        public Channel<QuicStream> IncomingStreamsQueue => _incomingStreamsQueue;
 
         internal const string WebTransportProtocolValue = "webtransport";
         internal const string VersionEnabledIndicator = "1";
         internal const string SecPrefix = "sec-webtransport-http3-";
         internal const string VersionHeaderPrefix = $"{SecPrefix}draft";
         internal const string CurrentSuppportedVersion = $"{VersionHeaderPrefix}02";
-
 
         public Http3WebtransportSession(QuicConnection connection, QuicStream connectStream)
         {
@@ -69,12 +69,10 @@ namespace System.Net.Http
 
         }
 
-
-
         /// <summary>
         /// Creates a webtransport session by creating a webtransport connect request, sending it to <see cref="Uri">uri</see>.
         /// </summary>
-        public static async ValueTask<Http3WebtransportSession?> connectAsync(Uri uri, HttpClientHandler? handler, CancellationToken cancellationToken)
+        public static async ValueTask<Http3WebtransportSession?> ConnectAsync(Uri uri, HttpClientHandler? handler, CancellationToken cancellationToken)
         {
             HttpClientHandler clientHandler = handler ?? new HttpClientHandler();
             var invoker = new HttpClient(clientHandler);
@@ -105,15 +103,14 @@ namespace System.Net.Http
         /// <summary>
         /// Takes the next incoming <see cref="QuicStream">quic stream from the server</see>.
         /// </summary>
-        public async ValueTask<QuicStream> getIncomingWTStreamFromServerAsync()
+        public async ValueTask<QuicStream> GetIncomingWTStreamFromServerAsync()
         {
             Console.WriteLine("Connect stream " + _connectStream.CanRead);
-            QuicStream quicStream = await incomingStreamsQueue.Reader.ReadAsync().ConfigureAwait(false);
+            QuicStream quicStream = await IncomingStreamsQueue.Reader.ReadAsync().ConfigureAwait(false);
             return quicStream;
         }
 
-        public bool getStreamStatus() => _connectStream.CanRead;
-
+        public bool GetStreamStatus() => _connectStream.CanRead;
 
         internal void AcceptServerStream(QuicStream stream)
         {
@@ -164,7 +161,6 @@ namespace System.Net.Http
             }
         }
 
-
         private byte[] BuildUnidirectionalClientFrame()
         {
             Span<byte> buffer = stackalloc byte[2 + VariableLengthIntegerHelper.MaximumEncodedLength];
@@ -208,8 +204,8 @@ namespace System.Net.Http
                 return;
             RemoveFromSessionsDictionary();
             _connectStream.Dispose();
-            incomingStreamsQueue.Writer.Complete();
-            while (incomingStreamsQueue.Reader.TryRead(out QuicStream? stream))
+            IncomingStreamsQueue.Writer.Complete();
+            while (IncomingStreamsQueue.Reader.TryRead(out QuicStream? stream))
             {
                 stream!.Abort(QuicAbortDirection.Read, 0x107d7b68);
             }

@@ -41,9 +41,9 @@ namespace System.Net.Http.Functional.Tests
 
             Task clientTask = Task.Run(async () =>
             {
-                InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Http3WebtransportSession.connectAsync((Uri)null, CreateHttpClientHandler(), CancellationToken.None));
-                ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Http3WebtransportSession.connectAsync(new Uri("/relative", UriKind.Relative), CreateHttpClientHandler(), CancellationToken.None));
-                NotSupportedException ex2 = await Assert.ThrowsAsync<NotSupportedException>(async () => await Http3WebtransportSession.connectAsync(new Uri("foo://foo.bar"), CreateHttpClientHandler(), CancellationToken.None));
+                InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Http3WebtransportSession.ConnectAsync((Uri)null, CreateHttpClientHandler(), CancellationToken.None));
+                ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Http3WebtransportSession.ConnectAsync(new Uri("/relative", UriKind.Relative), CreateHttpClientHandler(), CancellationToken.None));
+                NotSupportedException ex2 = await Assert.ThrowsAsync<NotSupportedException>(async () => await Http3WebtransportSession.ConnectAsync(new Uri("foo://foo.bar"), CreateHttpClientHandler(), CancellationToken.None));
             });
 
             await new[] { clientTask }.WhenAllOrAnyFailed(20_000);
@@ -58,9 +58,9 @@ namespace System.Net.Http.Functional.Tests
                     {
                         HttpClientHandler httpClientHandler = new HttpClientHandler(new System.Net.Http.BrowserHttpHandler());
 
-                        InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Http3WebtransportSession.connectAsync(server.Address, , CancellationToken.None));
-                        //ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Http3WebtransportSession.connectAsync(new Uri("/relative", UriKind.Relative), CreateHttpClientHandler(), CancellationToken.None));
-                        //NotSupportedException ex2 = await Assert.ThrowsAsync<NotSupportedException>(async () => await Http3WebtransportSession.connectAsync(new Uri("foo://foo.bar"), CreateHttpClientHandler(), CancellationToken.None));
+                        InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Http3WebtransportSession.ConnectAsync(server.Address, , CancellationToken.None));
+                        //ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Http3WebtransportSession.ConnectAsync(new Uri("/relative", UriKind.Relative), CreateHttpClientHandler(), CancellationToken.None));
+                        //NotSupportedException ex2 = await Assert.ThrowsAsync<NotSupportedException>(async () => await Http3WebtransportSession.ConnectAsync(new Uri("foo://foo.bar"), CreateHttpClientHandler(), CancellationToken.None));
                     });
 
                     await new[] { clientTask }.WhenAllOrAnyFailed(20_000);
@@ -79,7 +79,7 @@ namespace System.Net.Http.Functional.Tests
 
             Task clientTask = Task.Run(async () =>
             {
-                HttpRequestException ex = await Assert.ThrowsAsync<HttpRequestException>(async () => await Http3WebtransportSession.connectAsync(server.Address, CreateHttpClientHandler(), CancellationToken.None));
+                HttpRequestException ex = await Assert.ThrowsAsync<HttpRequestException>(async () => await Http3WebtransportSession.ConnectAsync(server.Address, CreateHttpClientHandler(), CancellationToken.None));
             });
 
             await new[] { clientTask, serverTask }.WhenAllOrAnyFailed(20_000);
@@ -109,7 +109,7 @@ namespace System.Net.Http.Functional.Tests
 
             Task clientTask = Task.Run(async () =>
             {
-                HttpRequestException ex = await Assert.ThrowsAsync<HttpRequestException>(async () => await Http3WebtransportSession.connectAsync(server.Address, CreateHttpClientHandler(), CancellationToken.None));
+                HttpRequestException ex = await Assert.ThrowsAsync<HttpRequestException>(async () => await Http3WebtransportSession.ConnectAsync(server.Address, CreateHttpClientHandler(), CancellationToken.None));
             });
 
             await new[] { clientTask, serverTask }.WhenAllOrAnyFailed(20_000);
@@ -138,7 +138,7 @@ namespace System.Net.Http.Functional.Tests
 
             Task clientTask = Task.Run(async () =>
             {
-                HttpRequestException ex = await Assert.ThrowsAsync<HttpRequestException>(async () => await Http3WebtransportSession.connectAsync(server.Address, CreateHttpClientHandler(), CancellationToken.None));
+                HttpRequestException ex = await Assert.ThrowsAsync<HttpRequestException>(async () => await Http3WebtransportSession.ConnectAsync(server.Address, CreateHttpClientHandler(), CancellationToken.None));
             });
 
             await new[] { clientTask, serverTask }.WhenAllOrAnyFailed(20_000);
@@ -187,7 +187,7 @@ namespace System.Net.Http.Functional.Tests
 
             Task clientTask = Task.Run(async () =>
             {
-                Http3WebtransportSession session = await Http3WebtransportSession.connectAsync(server.Address, CreateHttpClientHandler(), CancellationToken.None);
+                Http3WebtransportSession session = await Http3WebtransportSession.ConnectAsync(server.Address, CreateHttpClientHandler(), CancellationToken.None);
 
                 await session.DisposeAsync();
                 await Task.Delay(2_000);
@@ -237,7 +237,7 @@ namespace System.Net.Http.Functional.Tests
 
             Task clientTask = Task.Run(async () =>
             {
-                Http3WebtransportSession session = await Http3WebtransportSession.connectAsync(server.Address, CreateHttpClientHandler(), CancellationToken.None);
+                Http3WebtransportSession session = await Http3WebtransportSession.ConnectAsync(server.Address, CreateHttpClientHandler(), CancellationToken.None);
 
                 await Task.Delay(5_000);
 
@@ -293,7 +293,7 @@ namespace System.Net.Http.Functional.Tests
 
             Task clientTask = Task.Run(async () =>
             {
-                Http3WebtransportSession session = await Http3WebtransportSession.connectAsync(server.Address, CreateHttpClientHandler(), CancellationToken.None);
+                Http3WebtransportSession session = await Http3WebtransportSession.ConnectAsync(server.Address, CreateHttpClientHandler(), CancellationToken.None);
                 for (int i = 0; i < 20; i++)
                 {
                     var wtClientBidirectionalStream = await session.OpenWebtransportStreamAsync(QuicStreamType.Bidirectional);
@@ -361,7 +361,7 @@ namespace System.Net.Http.Functional.Tests
 
             Task clientTask = Task.Run(async () =>
             {
-                Http3WebtransportSession session = await Http3WebtransportSession.connectAsync(server.Address, CreateHttpClientHandler(), CancellationToken.None);
+                Http3WebtransportSession session = await Http3WebtransportSession.ConnectAsync(server.Address, CreateHttpClientHandler(), CancellationToken.None);
 
                 for (int i = 0; i < 20; i++)
                 {
@@ -426,10 +426,10 @@ namespace System.Net.Http.Functional.Tests
             {
                 using HttpClient client = CreateHttpClient();
 
-                Http3WebtransportSession session = await Http3WebtransportSession.connectAsync(server.Address, CreateHttpClientHandler(), CancellationToken.None);
+                Http3WebtransportSession session = await Http3WebtransportSession.ConnectAsync(server.Address, CreateHttpClientHandler(), CancellationToken.None);
                 for (int i = 0; i < 20; i++)
                 {
-                    QuicStream help = await session.getIncomingWTStreamFromServerAsync();
+                    QuicStream help = await session.GetIncomingWTStreamFromServerAsync();
                     byte[] recvBytes = new byte[20];
                     recvBytes = Encoding.ASCII.GetBytes(s + i);
                     await help.WriteAsync(recvBytes, true, CancellationToken.None).ConfigureAwait(false);
@@ -489,12 +489,12 @@ namespace System.Net.Http.Functional.Tests
             {
                 using HttpClient client = CreateHttpClient();
 
-                Http3WebtransportSession session = await Http3WebtransportSession.connectAsync(server.Address, CreateHttpClientHandler(), CancellationToken.None);
+                Http3WebtransportSession session = await Http3WebtransportSession.ConnectAsync(server.Address, CreateHttpClientHandler(), CancellationToken.None);
 
                 for (int i = 0; i < 10; i++)
                 {
 
-                    QuicStream help = await session.getIncomingWTStreamFromServerAsync();
+                    QuicStream help = await session.GetIncomingWTStreamFromServerAsync();
                     byte[] recvBytes = new byte[20];
                     int bytesRead = await help.ReadAsync(recvBytes, CancellationToken.None).ConfigureAwait(false);
                     while (bytesRead != 0)
@@ -544,8 +544,8 @@ namespace System.Net.Http.Functional.Tests
             {
                 using HttpClient client = CreateHttpClient();
 
-                Http3WebtransportSession session = await Http3WebtransportSession.connectAsync(server.Address, CreateHttpClientHandler(), CancellationToken.None);
-                QuicStream help = await session.getIncomingWTStreamFromServerAsync();
+                Http3WebtransportSession session = await Http3WebtransportSession.ConnectAsync(server.Address, CreateHttpClientHandler(), CancellationToken.None);
+                QuicStream help = await session.GetIncomingWTStreamFromServerAsync();
                 byte[] recvBytes = new byte[20];
                 recvBytes = Encoding.ASCII.GetBytes(s);
                 InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await help.WriteAsync(recvBytes, true, CancellationToken.None).ConfigureAwait(false));
@@ -592,10 +592,10 @@ namespace System.Net.Http.Functional.Tests
             {
                 using HttpClient client = CreateHttpClient();
 
-                Http3WebtransportSession session1 = await Http3WebtransportSession.connectAsync(server.Address, CreateHttpClientHandler(), CancellationToken.None);
-                Http3WebtransportSession session2 = await Http3WebtransportSession.connectAsync(server.Address, CreateHttpClientHandler(), CancellationToken.None);
+                Http3WebtransportSession session1 = await Http3WebtransportSession.ConnectAsync(server.Address, CreateHttpClientHandler(), CancellationToken.None);
+                Http3WebtransportSession session2 = await Http3WebtransportSession.ConnectAsync(server.Address, CreateHttpClientHandler(), CancellationToken.None);
                 await session2.DisposeAsync();
-                Http3WebtransportSession session3 = await Http3WebtransportSession.connectAsync(server.Address, CreateHttpClientHandler(), CancellationToken.None);
+                Http3WebtransportSession session3 = await Http3WebtransportSession.ConnectAsync(server.Address, CreateHttpClientHandler(), CancellationToken.None);
                 await session1.DisposeAsync();
                 await session3.DisposeAsync();
             });
