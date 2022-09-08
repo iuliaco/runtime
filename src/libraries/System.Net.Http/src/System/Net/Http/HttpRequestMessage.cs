@@ -170,7 +170,7 @@ namespace System.Net.Http
 
         internal bool IsExtendedConnectRequest => Method == HttpMethod.Connect && _headers?.Protocol != null;
 
-        internal bool IsWebTransportH3Request() => _version.Major == 3 && Method == HttpMethod.Connect && HasHeaders && string.Equals(Headers.Protocol, "webtransport", StringComparison.OrdinalIgnoreCase);
+        internal bool IsWebTransportH3Request => _version.Major == 3 && Method == HttpMethod.Connect && HasHeaders && string.Equals(Headers.Protocol, "webtransport", StringComparison.OrdinalIgnoreCase);
 
         #region IDisposable Members
 
