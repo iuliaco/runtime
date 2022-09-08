@@ -15,7 +15,7 @@ namespace System.Net.Http
     [SupportedOSPlatform("linux")]
     [SupportedOSPlatform("macos")]
     [UnsupportedOSPlatform("browser")]
-    public class Http3WebtransportSession : IAsyncDisposable
+    public class Http3WebtransportSession : IAsyncDisposable, IDisposable
     {
         public long id { get => throw new PlatformNotSupportedException(); }
         public bool getStreamStatus() => throw new PlatformNotSupportedException();
@@ -25,6 +25,7 @@ namespace System.Net.Http
         public ValueTask DisposeAsync() => throw new PlatformNotSupportedException();
         public static ValueTask<Http3WebtransportSession?> connectAsync(Uri uri, HttpClientHandler? handler, CancellationToken cancellationToken) => throw new PlatformNotSupportedException();
         public ValueTask<QuicStream?> OpenWebtransportStreamAsync(QuicStreamType type) => throw new PlatformNotSupportedException();
+        public void Dispose() => throw new PlatformNotSupportedException();
 
     }
 }
