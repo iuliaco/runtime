@@ -857,7 +857,7 @@ namespace System.Net.Http
                             if (settingValue != 0 && settingValue != 1)
                                 throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.SettingsError);
                             _enableWebTransport = (int)settingValue;
-                            WTManager = new Http3WebtransportManager(this.QuicConnection!);
+                            WTManager = new Http3WebtransportManager(_connection!);
                             break;
                         case Http3SettingType.ReservedHttp2EnablePush:
                         case Http3SettingType.ReservedHttp2MaxConcurrentStreams:

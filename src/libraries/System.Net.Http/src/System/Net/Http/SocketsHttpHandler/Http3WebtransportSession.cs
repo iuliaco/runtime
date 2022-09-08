@@ -131,13 +131,15 @@ namespace System.Net.Http
 
         internal async Task AbortIncomingSessionWebtransportStreams(long errorCode)
         {
-            _incomingStreamsQueue.Writer.Complete();
-            var incomingStreams = _incomingStreamsQueue.Reader.ReadAllAsync().ConfigureAwait(false);
-            await foreach (QuicStream incomingStream in incomingStreams)
+            // check if they were not aborted before
+            if(_incomingStreamsQueue.Writer.TryComplete())
             {
-                incomingStream.Abort(QuicAbortDirection.Read, errorCode);
+                var incomingStreams = _incomingStreamsQueue.Reader.ReadAllAsync().ConfigureAwait(false);
+                await foreach (QuicStream incomingStream in incomingStreams)
+                {
+                    incomingStream.Abort(QuicAbortDirection.Read, errorCode);
+                }
             }
-
         }
 
         /// <summary>

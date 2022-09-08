@@ -102,7 +102,7 @@ namespace System.Net.Http.Functional.Tests
                 await using (stream)
                 {
                     Assert.Equal(1, connection.EnableWebtransport);
-                    await stream.ReadRequestDataAsync();
+                    await stream.ReadRequestDataAsync(false);
                     await stream.SendResponseAsync(HttpStatusCode.NotFound);
                 }
             });
@@ -131,7 +131,7 @@ namespace System.Net.Http.Functional.Tests
                 await using (stream)
                 {
                     Assert.Equal(1, connection.EnableWebtransport);
-                    await stream.ReadRequestDataAsync();
+                    await stream.ReadRequestDataAsync(false);
                     await stream.SendResponseAsync();
                 }
             });
