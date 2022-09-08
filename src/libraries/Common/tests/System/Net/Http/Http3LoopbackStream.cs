@@ -30,7 +30,6 @@ namespace System.Net.Test.Common
         public const long UniWTStream = 0x54;
         public const long BiWTStream = 0x41;
 
-
         public const long MaxHeaderListSize = 0x6;
         public const long EnableWebTransport = 0x2b603742;
 
@@ -222,7 +221,6 @@ namespace System.Net.Test.Common
         {
             await _stream.WriteAsync(payload.AsMemory(), true);
         }
-
 
         public async Task<byte[]> ReadRequestBodyAsync()
         {

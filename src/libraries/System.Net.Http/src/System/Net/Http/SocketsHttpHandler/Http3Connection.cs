@@ -31,7 +31,6 @@ namespace System.Net.Http
         // Keep a collection of requests around so we can process GOAWAY.
         private readonly Dictionary<QuicStream, Http3RequestStream> _activeRequests = new Dictionary<QuicStream, Http3RequestStream>();
 
-
         // Set when GOAWAY is being processed, when aborting, or when disposing.
         private long _firstRejectedStreamId = -1;
 
@@ -42,7 +41,6 @@ namespace System.Net.Http
         private int _maximumHeadersLength = int.MaxValue; // TODO: this is not yet observed by Http3Stream when buffering headers.
         private int _enableWebTransport; // by default setted with 0
         private TaskCompletionSource _expectedSettingsFrameProcessed = new TaskCompletionSource(); // True indicates we should send content (e.g. received 100 Continue).
-
 
         internal Http3WebtransportManager? WTManager;
 
@@ -60,11 +58,8 @@ namespace System.Net.Http
 
         public HttpAuthority Authority => _authority;
         public HttpConnectionPool Pool => _pool;
-        // sadly I do not know how to acces it otherwise
-        public QuicConnection? QuicConnection => _connection;
 
         public int MaximumRequestHeadersLength => _maximumHeadersLength;
-
         public int EnableWebTransport => _enableWebTransport;
         public byte[]? AltUsedEncodedHeaderBytes => _altUsedEncodedHeader;
         public Exception? AbortException => Volatile.Read(ref _abortException);
@@ -197,20 +192,14 @@ namespace System.Net.Http
             QuicStream? quicStream = null;
             Http3RequestStream? requestStream = null;
             Console.Write("Aici intru");
-            // todo add await
-
 
             try
             {
                 if (request.IsWebTransportH3Request())
                 {
                     await _expectedSettingsFrameProcessed.Task.ConfigureAwait(false);
-
                     if (EnableWebTransport == 0)
                     {
-                        Console.Write("Error should be thrown");
-
-                        //TODO: should create a new exception message - on next steps
                         HttpRequestException exception = new(SR.net_unsupported_webtransport);
                         throw exception;
                     }
@@ -251,6 +240,7 @@ namespace System.Net.Http
                 {
                     throw new HttpRequestException(SR.net_http_request_aborted, null, RequestRetryType.RetryOnConnectionFailure);
                 }
+
                 requestStream!.StreamId = quicStream.Id;
 
                 bool goAway;
