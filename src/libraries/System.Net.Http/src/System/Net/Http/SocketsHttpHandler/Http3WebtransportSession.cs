@@ -23,7 +23,7 @@ namespace System.Net.Http
     [SupportedOSPlatform("macos")]
     [UnsupportedOSPlatform("browser")]
 
-    public class Http3WebtransportSession : IAsyncDisposable
+    public class Http3WebtransportSession : IAsyncDisposable, IDisposable
     {
         // initially null, will be placed when I create session
         private QuicStream _connectStream;
@@ -39,6 +39,11 @@ namespace System.Net.Http
             SingleWriter = true
         });
         private int _disposed;
+        internal Http3WebtransportManager? _WTManager;
+        internal void SetWTManager(Http3WebtransportManager? WTManager)
+        {
+            _WTManager = WTManager;
+        }
 
         public Channel<QuicStream> incomingStreamsQueue => _incomingStreamsQueue;
 
@@ -66,7 +71,9 @@ namespace System.Net.Http
 
 
 
-
+        /// <summary>
+        /// Creates a webtransport session by creating a webtransport connect request, sending it to <see cref="Uri">uri</see>.
+        /// </summary>
         public static async ValueTask<Http3WebtransportSession?> connectAsync(Uri uri, HttpClientHandler? handler, CancellationToken cancellationToken)
         {
             HttpClientHandler clientHandler = handler ?? new HttpClientHandler();
@@ -95,7 +102,9 @@ namespace System.Net.Http
             return webSes;
         }
 
-
+        /// <summary>
+        /// Takes the next incoming <see cref="QuicStream">quic stream from the server</see>.
+        /// </summary>
         public async ValueTask<QuicStream> getIncomingWTStreamFromServerAsync()
         {
             Console.WriteLine("Connect stream " + _connectStream.CanRead);
@@ -104,6 +113,7 @@ namespace System.Net.Http
         }
 
         public bool getStreamStatus() => _connectStream.CanRead;
+
 
         internal void AcceptServerStream(QuicStream stream)
         {
@@ -130,6 +140,9 @@ namespace System.Net.Http
 
         }
 
+        /// <summary>
+        /// Creates a new <see cref="QuicStream">quic stream and sends it to the server</see>.
+        /// </summary>
         public async ValueTask<QuicStream?> OpenWebtransportStreamAsync(QuicStreamType type)
         {
             QuicStream clientWTStream;
@@ -161,6 +174,11 @@ namespace System.Net.Http
             return buffer.Slice(0, payloadLength).ToArray();
         }
 
+        private void RemoveFromSessionsDictionary()
+        {
+            _WTManager!.DeleteSession(id);
+        }
+
         private byte[] BuildBidirectionalClientFrame()
         {
             Span<byte> buffer = stackalloc byte[2 + VariableLengthIntegerHelper.MaximumEncodedLength];
@@ -175,9 +193,24 @@ namespace System.Net.Http
         {
             if (Interlocked.Exchange(ref _disposed, 1) == 1)
                 return;
+            RemoveFromSessionsDictionary();
             await _connectStream.DisposeAsync().ConfigureAwait(false);
+            Console.WriteLine("Dau abort cu eroarea buna");
             await AbortIncomingSessionWebtransportStreams((long)0x107d7b68).ConfigureAwait(false);
 
+        }
+
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref _disposed, 1) == 1)
+                return;
+            RemoveFromSessionsDictionary();
+            _connectStream.Dispose();
+            incomingStreamsQueue.Writer.Complete();
+            while (incomingStreamsQueue.Reader.TryRead(out QuicStream? stream))
+            {
+                stream!.Abort(QuicAbortDirection.Read, 0x107d7b68);
+            }
         }
 
     }

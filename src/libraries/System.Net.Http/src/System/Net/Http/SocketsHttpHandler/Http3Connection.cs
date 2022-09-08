@@ -44,7 +44,7 @@ namespace System.Net.Http
         private TaskCompletionSource _expectedSettingsFrameProcessed = new TaskCompletionSource(); // True indicates we should send content (e.g. received 100 Continue).
 
 
-        private Http3WebtransportManager? WTManager;
+        internal Http3WebtransportManager? WTManager;
 
         // Once the server's streams are received, these are set to 1. Further receipt of these streams results in a connection error.
         private int _haveServerControlStream;
@@ -142,6 +142,15 @@ namespace System.Net.Http
             if (_connection != null)
             {
                 // Close the QuicConnection in the background.
+
+                if (WTManager is not null)
+                {
+                    foreach (KeyValuePair<long, Http3WebtransportSession> pair in WTManager.sessions)
+                    {
+                        pair.Value.Dispose();
+                        WTManager.sessions.TryRemove(pair.Key, out _);
+                    }
+                }
 
                 _connectionClosedTask ??= _connection.CloseAsync((long)Http3ErrorCode.NoError).AsTask();
 
@@ -261,6 +270,7 @@ namespace System.Net.Http
                 {
                     webtransportSession = new Http3WebtransportSession(this._connection!, requestStream.quicStream);
                     Console.WriteLine("In http3conn are id " + requestStream.StreamId + " si quicul " + requestStream.quicStream.Id);
+                    webtransportSession.SetWTManager(WTManager);
                     bool newWTSession = WTManager!.addSession(requestStream.quicStream, webtransportSession);
                     if (!newWTSession)
                     {
@@ -276,7 +286,9 @@ namespace System.Net.Http
                     {
                         if (response.Headers.Contains(Http3WebtransportSession.VersionHeaderPrefix))
                         {
+
                             Console.WriteLine("In http3conn in sesiune are id " + webtransportSession!.id);
+                            requestStream.isWebtransportSessionStream = true;
                             response.Content = new WebtransportHttpContent(webtransportSession);
                             requestStream = null;
                             return response;
@@ -284,6 +296,7 @@ namespace System.Net.Http
                         else
                         {
                             await webtransportSession.AbortIncomingSessionWebtransportStreams((long)Http3ErrorCode.WebtransportBufferedStreamRejected).ConfigureAwait(false);
+                            await webtransportSession.DisposeAsync().ConfigureAwait(false);
                             HttpRequestException exception = new(SR.net_webtransport_server_rejected);
                             throw exception;
                         }
@@ -292,6 +305,7 @@ namespace System.Net.Http
                     else
                     {
                         await webtransportSession.AbortIncomingSessionWebtransportStreams((long)Http3ErrorCode.WebtransportBufferedStreamRejected).ConfigureAwait(false);
+                        await webtransportSession.DisposeAsync().ConfigureAwait(false);
                         HttpRequestException exception = new(SR.net_webtransport_server_rejected);
                         throw exception;
                     }
@@ -345,6 +359,15 @@ namespace System.Net.Http
 
             // Stop sending requests to this connection.
             _pool.InvalidateHttp3Connection(this);
+
+            if(WTManager is not null)
+            {
+                foreach(KeyValuePair<long, Http3WebtransportSession> pair in WTManager.sessions)
+                {
+                    pair.Value.Dispose();
+                    WTManager.sessions.TryRemove(pair.Key, out _);
+                }
+            }
 
             long connectionResetErrorCode = (abortException as HttpProtocolException)?.ErrorCode ?? (long)Http3ErrorCode.InternalError;
 

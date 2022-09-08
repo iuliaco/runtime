@@ -309,7 +309,7 @@ namespace System.Net.Http
     [SupportedOSPlatform("macos")]
     [UnsupportedOSPlatform("browser")]
 
-    public partial class Http3WebtransportSession : IAsyncDisposable
+    public partial class Http3WebtransportSession : IAsyncDisposable, IDisposable
     {
         public long id { get { throw null; } }
         public bool getStreamStatus()  { throw null; }
@@ -319,6 +319,8 @@ namespace System.Net.Http
         public System.Threading.Tasks.ValueTask<QuicStream> getIncomingWTStreamFromServerAsync() { throw null; }
         public System.Threading.Tasks.ValueTask<QuicStream?> OpenWebtransportStreamAsync(QuicStreamType type) { throw null; }
         public ValueTask DisposeAsync() { throw null; }
+        public void Dispose() { throw null; }
+
     }
 
     public partial class HttpResponseMessage : System.IDisposable

@@ -19,14 +19,14 @@ namespace System.Net.Http
     [SupportedOSPlatform("macos")]
     internal sealed class Http3WebtransportManager
     {
-        private ConcurrentDictionary<long, Http3WebtransportSession> _sessions;
+        public ConcurrentDictionary<long, Http3WebtransportSession> sessions;
         private QuicConnection _connection;
 
         //private bool _disposed;
 
         public Http3WebtransportManager(QuicConnection connection)
         {
-            _sessions = new ConcurrentDictionary<long, Http3WebtransportSession>();
+            sessions = new ConcurrentDictionary<long, Http3WebtransportSession>();
             _connection = connection;
         }
 
@@ -34,14 +34,14 @@ namespace System.Net.Http
         public bool addSession(QuicStream connectStream, Http3WebtransportSession webtransportSession)
         {
 
-            return _sessions.TryAdd(connectStream.Id, webtransportSession);
+            return sessions.TryAdd(connectStream.Id, webtransportSession);
         }
 
 
         public void AcceptServerStream(QuicStream stream, long sessionId)
         {
             Http3WebtransportSession? session;
-            _sessions.TryGetValue(sessionId, out session);
+            sessions.TryGetValue(sessionId, out session);
             // if no session with that id exists throw exception
             // https://datatracker.ietf.org/doc/html/draft-ietf-webtrans-http3#section-4
             if (session == null)
@@ -53,34 +53,10 @@ namespace System.Net.Http
             session.AcceptServerStream(stream);
         }
 
-     /*   public async ValueTask<QuicStream?> OpenUnidirectionalStreamAsync(long sessionId)
+        public void DeleteSession(long id)
         {
-            Http3WebtransportSession? session;
-            _sessions.TryGetValue(sessionId, out session);
-
-            // if no session with that id exists throw exception
-            // https://datatracker.ietf.org/doc/html/draft-ietf-webtrans-http3#section-4
-            if (session == null)
-            {
-                throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.IdError);
-            }
-            return await session.OpenUnidirectionalStreamAsync(_connection).ConfigureAwait(false);
-
+            sessions.TryRemove(id, out _);
         }
 
-        public async ValueTask<QuicStream?> OpenBidirectionalStreamAsync(long sessionId)
-        {
-            Http3WebtransportSession? session;
-            _sessions.TryGetValue(sessionId, out session);
-            // if no session with that id exists throw exception
-            // https://datatracker.ietf.org/doc/html/draft-ietf-webtrans-http3#section-4
-            if (session == null)
-            {
-                throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.IdError);
-            }
-            return await session.OpenBidirectionalStreamAsync(_connection).ConfigureAwait(false);
-
-        }
-*/
     }
 }
