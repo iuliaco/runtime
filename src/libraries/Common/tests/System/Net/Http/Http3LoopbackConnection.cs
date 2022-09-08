@@ -166,7 +166,6 @@ namespace System.Net.Test.Common
         // This will automatically handle the control stream, including validating its contents
         public async Task<Http3LoopbackStream> AcceptRequestStreamAsync()
         {
-
             await EnsureControlStreamAcceptedAsync().ConfigureAwait(false);
 
             if (!_delayedStreams.TryDequeue(out QuicStream quicStream))

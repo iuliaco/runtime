@@ -266,7 +266,6 @@ namespace System.Net.Test.Common
 
             if (content != null && !newHeaders.Any(x => x.Name == "Content-Length"))
             {
-                
                 newHeaders = newHeaders.Append(new HttpHeaderData("Content-Length", content.Length.ToString(CultureInfo.InvariantCulture)));
             }
             await SendResponseHeadersAsync(statusCode, newHeaders).ConfigureAwait(false);
@@ -496,7 +495,6 @@ namespace System.Net.Test.Common
             do
             {
                 bytesRead = await _stream.ReadAsync(buffer.AsMemory(bufferActiveLength++, 1)).ConfigureAwait(false);
-
                 if (bytesRead == 0)
                 {
                     return bufferActiveLength == 1 ? (long?)null : throw new Exception("Unable to read varint; unexpected end of stream.");

@@ -320,7 +320,6 @@ namespace System.Net.Http
         public System.Threading.Tasks.ValueTask<QuicStream?> OpenWebtransportStreamAsync(QuicStreamType type) { throw null; }
         public ValueTask DisposeAsync() { throw null; }
         public void Dispose() { throw null; }
-
     }
 
     public partial class HttpResponseMessage : System.IDisposable

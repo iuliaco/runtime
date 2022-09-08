@@ -1,7 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.Tracing;
@@ -13,17 +12,12 @@ using System.Net.Security;
 using System.Net.Sockets;
 using System.Net.Test.Common;
 using System.Reflection;
-using System.Reflection.PortableExecutable;
 using System.Security.Authentication;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.TestPlatform.ObjectModel.DataCollection;
 using Xunit;
 using Xunit.Abstractions;
-using static System.Net.Test.Common.Configuration;
-using static System.Net.Test.Common.LoopbackServer;
 
 namespace System.Net.Http.Functional.Tests
 {
@@ -65,6 +59,7 @@ namespace System.Net.Http.Functional.Tests
                 {
                     Assert.False(settingsStream.CanWrite, "Expected unidirectional control stream.");
                     Assert.Equal(expectedHeaderSizeLimitBytes, connection.MaxHeaderListSize);
+
                     await requestStream.ReadRequestDataAsync();
                     await requestStream.SendResponseAsync();
                 }

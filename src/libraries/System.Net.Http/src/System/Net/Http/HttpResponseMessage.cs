@@ -37,9 +37,6 @@ namespace System.Net.Http
         }
 
         internal void SetVersionWithoutValidation(Version value) => _version = value;
-#if TARGET_WINDOWS_LINUX_MACOS
-        internal void SetWebtransportWithoutValidation(Http3WebtransportSession value) => _webtransportSession = value;
-#endif
 
         [AllowNull]
         public HttpContent Content
