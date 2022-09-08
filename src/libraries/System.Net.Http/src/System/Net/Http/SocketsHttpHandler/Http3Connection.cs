@@ -261,7 +261,7 @@ namespace System.Net.Http
                     webtransportSession = new Http3WebtransportSession(this._connection!, requestStream.quicStream);
                     Console.WriteLine("In http3conn are id " + requestStream.StreamId + " si quicul " + requestStream.quicStream.Id);
                     webtransportSession.SetWTManager(WTManager);
-                    bool newWTSession = WTManager!.addSession(requestStream.quicStream, webtransportSession);
+                    bool newWTSession = WTManager!.AddSession(requestStream.quicStream, webtransportSession);
                     if (!newWTSession)
                     {
                         Console.Write("A new error should be thrown");

@@ -31,12 +31,11 @@ namespace System.Net.Http
         }
 
 
-        public bool addSession(QuicStream connectStream, Http3WebtransportSession webtransportSession)
+        public bool AddSession(QuicStream connectStream, Http3WebtransportSession webtransportSession)
         {
 
             return sessions.TryAdd(connectStream.Id, webtransportSession);
         }
-
 
         public void AcceptServerStream(QuicStream stream, long sessionId)
         {
