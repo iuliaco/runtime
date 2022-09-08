@@ -1023,6 +1023,7 @@ namespace System.Net.Http
                 try
                 {
                     HttpResponseMessage? response = null;
+
                     // Use HTTP/3 if possible.
                     if (IsHttp3Supported() && // guard to enable trimming HTTP/3 support
                         _http3Enabled &&

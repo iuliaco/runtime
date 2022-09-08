@@ -165,7 +165,7 @@ namespace System.Net.Http
 
                     // End the stream writing if there's no content to send, do it as part of the write so that the FIN flag isn't send in an empty QUIC frame.
                     // Note that there's no need to call Shutdown separately since the FIN flag in the last write is the same thing.
-                    await FlushSendBufferAsync(endStream: _request.Content == null && !_request.IsWebTransportH3Request(), _requestBodyCancellationSource.Token).ConfigureAwait(false);
+                    await FlushSendBufferAsync(endStream: _request.Content == null && !_request.IsWebTransportH3Request, _requestBodyCancellationSource.Token).ConfigureAwait(false);
                 }
 
                 Task sendContentTask;
@@ -256,9 +256,8 @@ namespace System.Net.Http
 
                 // If we're 100% done with the stream, dispose.
                 disposeSelf = useEmptyResponseContent;
-                if(_request.IsWebTransportH3Request())
+                if(_request.IsWebTransportH3Request)
                 {
-
                     disposeSelf = false;
                 }
 
@@ -659,7 +658,7 @@ namespace System.Net.Http
                 BufferHeaderCollection(request.Headers);
             }
 
-            if(request.IsWebTransportH3Request())
+            if(request.IsWebTransportH3Request)
             {
                 BufferLiteralHeaderWithoutNameReference(Http3WebtransportSession.CurrentSuppportedVersion, "1", null);
             }

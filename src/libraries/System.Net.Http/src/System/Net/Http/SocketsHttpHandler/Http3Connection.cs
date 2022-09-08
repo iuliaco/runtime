@@ -195,7 +195,7 @@ namespace System.Net.Http
 
             try
             {
-                if (request.IsWebTransportH3Request())
+                if (request.IsWebTransportH3Request)
                 {
                     await _expectedSettingsFrameProcessed.Task.ConfigureAwait(false);
                     if (EnableWebTransport == 0)
@@ -256,7 +256,7 @@ namespace System.Net.Http
 
                 if (NetEventSource.Log.IsEnabled()) Trace($"Sending request: {request}");
                 Http3WebtransportSession webtransportSession;
-                if (request.IsWebTransportH3Request())
+                if (request.IsWebTransportH3Request)
                 {
                     webtransportSession = new Http3WebtransportSession(this._connection!, requestStream.quicStream);
                     Console.WriteLine("In http3conn are id " + requestStream.StreamId + " si quicul " + requestStream.quicStream.Id);
