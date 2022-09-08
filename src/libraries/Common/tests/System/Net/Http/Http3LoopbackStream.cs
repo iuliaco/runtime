@@ -266,6 +266,7 @@ namespace System.Net.Test.Common
             {
                 newHeaders = newHeaders.Append(new HttpHeaderData("Content-Length", content.Length.ToString(CultureInfo.InvariantCulture)));
             }
+
             await SendResponseHeadersAsync(statusCode, newHeaders).ConfigureAwait(false);
             await SendResponseBodyAsync(Encoding.UTF8.GetBytes(content ?? ""), isFinal).ConfigureAwait(false);
         }
@@ -490,6 +491,7 @@ namespace System.Net.Test.Common
 
             long integerValue;
             int bytesRead;
+
             do
             {
                 bytesRead = await _stream.ReadAsync(buffer.AsMemory(bufferActiveLength++, 1)).ConfigureAwait(false);

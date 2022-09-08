@@ -149,13 +149,12 @@ namespace System.Net.Test.Common
 
                 long? streamType = await controlStream.ReadIntegerAsync();
                 Assert.Equal(Http3LoopbackStream.ControlStream, streamType);
-            
+
                 List<(long settingId, long settingValue)> settings = await controlStream.ReadSettingsAsync();
                 (long webtransportId, long webtransportValue) = Assert.Single(settings, setting => setting.settingId == Http3LoopbackStream.EnableWebTransport);
                 (long settingId, long settingValue) = Assert.Single(settings, setting => setting.settingId == Http3LoopbackStream.MaxHeaderListSize);
 
                 Assert.Equal(Http3LoopbackStream.MaxHeaderListSize, settingId);
-                
                 MaxHeaderListSize = settingValue;
                 EnableWebtransport = webtransportValue;
 
@@ -216,7 +215,6 @@ namespace System.Net.Test.Common
             await _outboundControlStream.SendUnidirectionalStreamTypeAsync(Http3LoopbackStream.ControlStream);
             await _outboundControlStream.SendSettingsFrameAsync(settings);
         }
-
 
         public async Task<Http3LoopbackStream> OpenUnidirectionalWTStreamAsync(long? sessionId)
         {
