@@ -6856,7 +6856,7 @@ MONO_RESTORE_WARNING
 		}
 
 		case OP_CHECK_THIS:
-			LLVMBuildLoad2 (builder, IntPtrType (), convert (ctx, lhs, pointer_type (IntPtrType ())), "");
+			LLVMBuildLoad2 (builder, LLVMInt8Type (), convert (ctx, lhs, pointer_type (LLVMInt8Type ())), "");
 			break;
 		case OP_OUTARG_VTRETADDR:
 			break;
@@ -7713,6 +7713,14 @@ MONO_RESTORE_WARNING
 			default:
 				element_ix = const_int32 (ins->inst_c0);
 			}
+
+#ifdef TARGET_WASM
+			// LLVM seems to return an invalid result when the input is undef (i.e. the result of an invalid shufflevector for example)
+			if (LLVMIsUndef (lhs)) {
+				values [ins->dreg] = LLVMConstNull (LLVMGetElementType (LLVMTypeOf (lhs)));
+				break;
+			}
+#endif
 			LLVMTypeRef lhs_t = LLVMTypeOf (lhs);
 			int vec_width = mono_llvm_get_prim_size_bits (lhs_t);
 			int elem_width = mono_llvm_get_prim_size_bits (elt_t);
@@ -9717,8 +9725,20 @@ MONO_RESTORE_WARNING
 			break;
 		}
 		case OP_WASM_SIMD_SWIZZLE: {
-			LLVMValueRef args [] = { lhs, rhs };
-			values [ins->dreg] = call_intrins (ctx, INTRINS_WASM_SWIZZLE, args, "");
+			int nelems = LLVMGetVectorSize (LLVMTypeOf (lhs));
+			if (nelems == 16) {
+				LLVMValueRef args [] = { lhs, rhs };
+				values [ins->dreg] = call_intrins (ctx, INTRINS_WASM_SWIZZLE, args, "");
+				break;
+			}
+
+			LLVMValueRef indexes [16];
+			for (int i = 0; i < nelems; ++i)
+				indexes [i] = LLVMBuildExtractElement (builder, rhs, const_int32 (i), "");
+			LLVMValueRef shuffle_val = LLVMConstNull (LLVMVectorType (i4_t, nelems));
+			for (int i = 0; i < nelems; ++i)
+				shuffle_val = LLVMBuildInsertElement (builder, shuffle_val, convert (ctx, indexes [i], i4_t), const_int32 (i), "");
+			values [ins->dreg] = LLVMBuildShuffleVector (builder, lhs, LLVMGetUndef (LLVMTypeOf (lhs)), shuffle_val, "");
 			break;
 		}
 #endif
