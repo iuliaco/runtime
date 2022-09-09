@@ -22,19 +22,19 @@ namespace System.Net.Http
         public ConcurrentDictionary<long, Http3WebtransportSession> sessions;
         private QuicConnection _connection;
 
-        //private bool _disposed;
-
         public Http3WebtransportManager(QuicConnection connection)
         {
             sessions = new ConcurrentDictionary<long, Http3WebtransportSession>();
             _connection = connection;
         }
 
-
         public bool AddSession(QuicStream connectStream, Http3WebtransportSession webtransportSession)
         {
 
-            return sessions.TryAdd(connectStream.Id, webtransportSession);
+            bool ans = sessions.TryAdd(connectStream.Id, webtransportSession);
+            Console.WriteLine("Oareeee h3conn 3 " + sessions.Count + ans);
+
+            return ans;
         }
 
         public void AcceptServerStream(QuicStream stream, long sessionId)

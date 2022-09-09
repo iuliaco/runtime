@@ -696,6 +696,7 @@ namespace System.Net.Http
             _sendBuffer.ActiveSpan[0] = (byte)Http3FrameType.Headers;
             int actualHeadersLengthEncodedSize = VariableLengthIntegerHelper.WriteInteger(_sendBuffer.ActiveSpan.Slice(1, headersLengthEncodedSize), headersLength);
             Debug.Assert(actualHeadersLengthEncodedSize == headersLengthEncodedSize);
+
             if (HttpTelemetry.Log.IsEnabled()) HttpTelemetry.Log.RequestHeadersStop();
         }
 

@@ -137,13 +137,17 @@ namespace System.Net.Http
             if (_connection != null)
             {
                 // Close the QuicConnection in the background.
-
+                Console.WriteLine("Oareeee h3conn");
                 if (WTManager is not null)
                 {
+                    Console.WriteLine("Oareeee h3conn 3 " + WTManager.sessions.Count);
+
                     foreach (KeyValuePair<long, Http3WebtransportSession> pair in WTManager.sessions)
                     {
+                        Console.WriteLine("Oareeee h3conn 2");
+
+                        // each session removes herself from the dictionary after disposal
                         pair.Value.Dispose();
-                        WTManager.sessions.TryRemove(pair.Key, out _);
                     }
                 }
 
@@ -513,6 +517,7 @@ namespace System.Net.Http
                     }
 
                     QuicStream stream = await streamTask.ConfigureAwait(false);
+
                     // This process is cleaned up when _connection is disposed, and errors are observed via Abort().
                     _ = ProcessServerStreamAsync(stream);
                 }
@@ -550,6 +555,8 @@ namespace System.Net.Http
 
                 try
                 {
+                    // webtransport has a header of 3 bytes and in order to avoid reading
+                    // user content for webtransport stream we need at first to read 3 bytes
                     byte[] header = new byte[3];
                     bytesRead = await stream.ReadAsync(header, CancellationToken.None).ConfigureAwait(false);
                     header.CopyTo(buffer.AvailableMemory);
@@ -571,13 +578,11 @@ namespace System.Net.Http
                 }
 
                 buffer.Commit(bytesRead);
-                long streamType;
-                VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan, out streamType, out bytesRead);
+                VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan, out long streamType, out bytesRead);
                 if (stream.CanWrite)
                 {
                     if (EnableWebTransport == 1)
                     {
-                        // TODO: Mana
                         if (streamType == (long)Http3StreamType.WebTransportBidirectional)
                         {
                             Console.Write("Catched it nailed it bidir stream" + stream.Id + " " + stream.CanRead);
@@ -641,7 +646,6 @@ namespace System.Net.Http
                         throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.IdError);
                     case (long)Http3StreamType.WebTransportUnidirectional:
                         long sessionId;
-                        // TODO: Mana
                         VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan.Slice(bytesRead), out sessionId, out bytesRead);
                         Console.Write("Catched it nailed it unidir stream" + stream.Id + " " + sessionId + " " + stream.CanRead);
                         quicStream = null;

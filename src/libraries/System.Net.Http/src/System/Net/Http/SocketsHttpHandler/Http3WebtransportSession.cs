@@ -25,10 +25,11 @@ namespace System.Net.Http
 
     public class Http3WebtransportSession : IAsyncDisposable, IDisposable
     {
-        // initially null, will be placed when I create session
-        private QuicStream _connectStream;
-        private QuicConnection _connection;
+        private readonly QuicStream _connectStream;
+        private readonly QuicConnection _connection;
+        private static HttpClient? _httpClient;
 
+        public static HttpClient WebtransportClient => _httpClient ??= new HttpClient();
         public long id
         {
             get { return _connectStream.Id; }
@@ -70,13 +71,23 @@ namespace System.Net.Http
         }
 
         /// <summary>
+        /// Creates a client for the webtransport session.
+        /// </summary>
+        public static void SetHttpClient(HttpClientHandler handler)
+        {
+            _httpClient = new HttpClient(handler);
+        }
+
+        public static void SetHttpClient(HttpClient client)
+        {
+            _httpClient = client;
+        }
+
+        /// <summary>
         /// Creates a webtransport session by creating a webtransport connect request, sending it to <see cref="Uri">uri</see>.
         /// </summary>
-        public static async ValueTask<Http3WebtransportSession?> ConnectAsync(Uri uri, HttpClientHandler? handler, CancellationToken cancellationToken)
+        public static async ValueTask<Http3WebtransportSession?> ConnectAsync(Uri uri, CancellationToken cancellationToken)
         {
-            HttpClientHandler clientHandler = handler ?? new HttpClientHandler();
-            var invoker = new HttpClient(clientHandler);
-            Console.WriteLine("inceeeerc: ");
 
             Http3WebtransportSession? webSes;
             try
@@ -84,7 +95,7 @@ namespace System.Net.Http
                 HttpRequestMessage request;
                 request = new HttpRequestMessage(HttpMethod.Connect, uri) { Version = HttpVersion.Version30, VersionPolicy = HttpVersionPolicy.RequestVersionExact };
                 request.Headers.Protocol = WebTransportProtocolValue;
-                Task<HttpResponseMessage> sendTask = invoker.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                Task<HttpResponseMessage> sendTask = WebtransportClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
                 var response = await sendTask.ConfigureAwait(false);
                 WebtransportHttpContent connectedWebtransSessionContent = (WebtransportHttpContent)response.Content;
                 Console.WriteLine("inceeeerc: 2");
@@ -103,8 +114,10 @@ namespace System.Net.Http
         /// <summary>
         /// Takes the next incoming <see cref="QuicStream">quic stream from the server</see>.
         /// </summary>
-        public async ValueTask<QuicStream> GetIncomingWTStreamFromServerAsync()
+        public async ValueTask<QuicStream?> GetIncomingWTStreamFromServerAsync()
         {
+            if (_disposed == 1)
+                return null;
             Console.WriteLine("Connect stream " + _connectStream.CanRead);
             QuicStream quicStream = await IncomingStreamsQueue.Reader.ReadAsync().ConfigureAwait(false);
             return quicStream;
@@ -144,6 +157,8 @@ namespace System.Net.Http
         /// </summary>
         public async ValueTask<QuicStream?> OpenWebtransportStreamAsync(QuicStreamType type)
         {
+            if (_disposed == 1)
+                return null;
             QuicStream clientWTStream;
             try
             {
@@ -192,9 +207,12 @@ namespace System.Net.Http
             if (Interlocked.Exchange(ref _disposed, 1) == 1)
                 return;
             RemoveFromSessionsDictionary();
-            await _connectStream.DisposeAsync().ConfigureAwait(false);
-            Console.WriteLine("Dau abort cu eroarea buna");
             await AbortIncomingSessionWebtransportStreams((long)0x107d7b68).ConfigureAwait(false);
+
+            await _connectStream.DisposeAsync().ConfigureAwait(false);
+            Console.WriteLine("StackTrace: '{0}'", Environment.StackTrace);
+
+            Console.WriteLine("Dau abort cu eroarea buna");
 
         }
 
