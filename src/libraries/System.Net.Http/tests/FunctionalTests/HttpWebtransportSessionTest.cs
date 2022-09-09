@@ -209,6 +209,7 @@ namespace System.Net.Http.Functional.Tests
                     await stream.SendResponseAsync(HttpStatusCode.OK, headers, "", false);
 
                     var wtServerBidirectionalStream = await connection.OpenBidirectionalWTStreamAsync(stream.StreamId + 1);
+                    // Delay needed so quic will not unify the header and the body of the wt stream
                     await Task.Delay(500);
 
                     byte[] recvBytes = new byte[18];
