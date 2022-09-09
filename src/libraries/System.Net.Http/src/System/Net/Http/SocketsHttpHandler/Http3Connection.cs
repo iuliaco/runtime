@@ -12,7 +12,6 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Net.Http.Headers;
 using System.Net.Security;
-using System.Text;
 
 namespace System.Net.Http
 {

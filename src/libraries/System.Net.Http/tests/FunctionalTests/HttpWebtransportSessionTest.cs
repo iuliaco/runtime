@@ -22,8 +22,6 @@ using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestPlatform.ObjectModel.DataCollection;
 using Xunit;
 using Xunit.Abstractions;
-using static System.Net.Test.Common.Configuration;
-using static System.Net.Test.Common.LoopbackServer;
 
 namespace System.Net.Http.Functional.Tests
 {
@@ -546,7 +544,7 @@ namespace System.Net.Http.Functional.Tests
         }
 
         [Fact]
-        public async Task WebTransportAllowMultipleSessions()
+        public async Task WebTransportAllowMultipleSessionsDifferentTermination()
         {
             using Http3LoopbackServer server = CreateHttp3LoopbackServer();
             SemaphoreSlim semaphore = new SemaphoreSlim(0);
