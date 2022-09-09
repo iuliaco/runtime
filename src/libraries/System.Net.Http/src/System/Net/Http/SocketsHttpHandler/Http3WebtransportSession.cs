@@ -131,7 +131,6 @@ namespace System.Net.Http
 
             bool added = _incomingStreamsQueue.Writer.TryWrite(stream); //_streams.TryAdd(stream.Id, stream);
             Debug.Assert(added);
-
         }
 
         internal async Task AbortIncomingSessionWebtransportStreams(long errorCode)
@@ -203,7 +202,6 @@ namespace System.Net.Http
                 return;
             RemoveFromSessionsDictionary();
             await AbortIncomingSessionWebtransportStreams((long)0x107d7b68).ConfigureAwait(false);
-
             await _connectStream.DisposeAsync().ConfigureAwait(false);
         }
 

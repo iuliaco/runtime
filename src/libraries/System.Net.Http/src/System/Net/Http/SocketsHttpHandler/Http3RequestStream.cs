@@ -227,7 +227,6 @@ namespace System.Net.Http
                     // A read stream is required to finish up the request.
                     responseContent.SetStream(new Http3ReadStream(this));
                 }
-
                 if (NetEventSource.Log.IsEnabled()) Trace($"Received response: {_response}");
 
                 // Process any Set-Cookie headers.
@@ -336,6 +335,7 @@ namespace System.Net.Http
         private async Task ReadResponseAsync(CancellationToken cancellationToken)
         {
             if (HttpTelemetry.Log.IsEnabled()) HttpTelemetry.Log.ResponseHeadersStart();
+
             Debug.Assert(_response == null);
             do
             {
@@ -345,7 +345,6 @@ namespace System.Net.Http
 
                 if (frameType != Http3FrameType.Headers)
                 {
-
                     if (NetEventSource.Log.IsEnabled())
                     {
                         Trace($"Expected HEADERS as first response frame; received {frameType}.");
@@ -648,7 +647,6 @@ namespace System.Net.Http
             {
                 BufferHeaderCollection(request.Content.Headers);
             }
-
 
             // Determine our header envelope size.
             // The reserved space was the maximum required; discard what wasn't used.
@@ -1381,7 +1379,6 @@ namespace System.Net.Http
                     // We shouldn't be using a managed instance here, but don't have much choice -- we
                     // need to remove the stream from the connection's GOAWAY collection and properly abort.
                     stream.AbortStream();
-
                     stream._connection.RemoveStream(stream._stream);
                     stream._connection = null!;
                 }

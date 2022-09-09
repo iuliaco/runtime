@@ -40,8 +40,7 @@ namespace System.Net.Http
         // Current SETTINGS from the server.
         private int _maximumHeadersLength = int.MaxValue; // TODO: this is not yet observed by Http3Stream when buffering headers.
         private int _enableWebTransport; // by default setted with 0
-        private TaskCompletionSource _expectedSettingsFrameProcessed = new TaskCompletionSource(); // True indicates we should send content (e.g. received 100 Continue).
-
+        private TaskCompletionSource _expectedSettingsFrameProcessed = new TaskCompletionSource(); // True indicates that the settings frame was processed
         internal Http3WebtransportManager? WTManager;
 
         // Once the server's streams are received, these are set to 1. Further receipt of these streams results in a connection error.
@@ -91,7 +90,6 @@ namespace System.Net.Http
                 _altUsedEncodedHeader = QPack.QPackEncoder.EncodeLiteralHeaderFieldWithoutNameReferenceToArray(KnownHeaders.AltUsed.Name, altUsedValue);
             }
 
-
             if (HttpTelemetry.Log.IsEnabled())
             {
                 HttpTelemetry.Log.Http30ConnectionEstablished();
@@ -139,7 +137,6 @@ namespace System.Net.Http
                 // Close the QuicConnection in the background.
                 if (WTManager is not null)
                 {
-
                     foreach (KeyValuePair<long, Http3WebtransportSession> pair in WTManager.sessions)
                     {
                         // each session removes herself from the dictionary after disposal
@@ -293,8 +290,6 @@ namespace System.Net.Http
 
                 // null out requestStream to avoid disposing in finally block. It is now in charge of disposing itself.
                 requestStream = null;
-
-
 
                 return await responseTask.ConfigureAwait(false);
             }
@@ -533,7 +528,6 @@ namespace System.Net.Http
             try
             {
                 buffer = new ArrayBuffer(initialSize: 32, usePool: true);
-
                 int bytesRead;
 
                 try
@@ -577,7 +571,6 @@ namespace System.Net.Http
                     }
                     // Server initiated bidirectional streams are either push streams or extensions, and we support neither.
                     throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.StreamCreationError);
-
                 }
                 // Stream type is a variable-length integer, but we only check the first byte. There is no known type requiring more than 1 byte.
                 switch (streamType)
