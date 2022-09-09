@@ -137,15 +137,11 @@ namespace System.Net.Http
             if (_connection != null)
             {
                 // Close the QuicConnection in the background.
-                Console.WriteLine("Oareeee h3conn");
                 if (WTManager is not null)
                 {
-                    Console.WriteLine("Oareeee h3conn 3 " + WTManager.sessions.Count);
 
                     foreach (KeyValuePair<long, Http3WebtransportSession> pair in WTManager.sessions)
                     {
-                        Console.WriteLine("Oareeee h3conn 2");
-
                         // each session removes herself from the dictionary after disposal
                         pair.Value.Dispose();
                     }
@@ -195,7 +191,6 @@ namespace System.Net.Http
             // Allocate an active request
             QuicStream? quicStream = null;
             Http3RequestStream? requestStream = null;
-            Console.Write("Aici intru");
 
             try
             {
@@ -221,7 +216,6 @@ namespace System.Net.Http
                         quicStream = await conn.OpenOutboundStreamAsync(QuicStreamType.Bidirectional, cancellationToken).ConfigureAwait(false);
 
                         requestStream = new Http3RequestStream(request, this, quicStream);
-                        Console.WriteLine("Streamul de connect este " + quicStream);
                         lock (SyncObj)
                         {
                             _activeRequests.Add(quicStream, requestStream);
@@ -263,25 +257,15 @@ namespace System.Net.Http
                 if (request.IsWebTransportH3Request)
                 {
                     webtransportSession = new Http3WebtransportSession(this._connection!, requestStream.quicStream);
-                    Console.WriteLine("In http3conn are id " + requestStream.StreamId + " si quicul " + requestStream.quicStream.Id);
                     webtransportSession.SetWTManager(WTManager);
-                    bool newWTSession = WTManager!.AddSession(requestStream.quicStream, webtransportSession);
-                    if (!newWTSession)
-                    {
-                        Console.Write("A new error should be thrown");
-                    }
-                    Console.WriteLine("http3conn 1");
+                    WTManager!.AddSession(requestStream.quicStream, webtransportSession);
                     Task<HttpResponseMessage> responseWebtransportTask = requestStream.SendAsync(cancellationToken);
-                    Console.WriteLine("http3conn 2");
-                    var response = await responseWebtransportTask.ConfigureAwait(false);
-                    Console.WriteLine("http3conn 3");
+                    HttpResponseMessage response = await responseWebtransportTask.ConfigureAwait(false);
 
                     if (response.IsSuccessStatusCode)
                     {
                         if (response.Headers.Contains(Http3WebtransportSession.VersionHeaderPrefix))
                         {
-
-                            Console.WriteLine("In http3conn in sesiune are id " + webtransportSession!.id);
                             requestStream.isWebtransportSessionStream = true;
                             response.Content = new WebtransportHttpContent(webtransportSession);
                             requestStream = null;
@@ -461,7 +445,6 @@ namespace System.Net.Http
                 // Server MUST NOT abort our control stream, setup a continuation which will react accordingly
                 _ = _clientControl.WritesClosed.ContinueWith(t =>
                 {
-                    Console.WriteLine("N ar trebui sa intru aici");
                     if (t.Exception?.InnerException is QuicException ex && ex.QuicError == QuicError.StreamAborted)
                     {
                         Abort(HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.ClosedCriticalStream));
@@ -560,7 +543,6 @@ namespace System.Net.Http
                     byte[] header = new byte[3];
                     bytesRead = await stream.ReadAsync(header, CancellationToken.None).ConfigureAwait(false);
                     header.CopyTo(buffer.AvailableMemory);
-                    Console.WriteLine("No. of bytes read in process " + bytesRead);
                 }
                 catch (QuicException ex) when (ex.QuicError == QuicError.StreamAborted)
                 {
@@ -585,7 +567,6 @@ namespace System.Net.Http
                     {
                         if (streamType == (long)Http3StreamType.WebTransportBidirectional)
                         {
-                            Console.Write("Catched it nailed it bidir stream" + stream.Id + " " + stream.CanRead);
                             long sessionId;
                             VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan.Slice(bytesRead), out sessionId, out bytesRead);
                             buffer.Commit(bytesRead);
@@ -647,7 +628,6 @@ namespace System.Net.Http
                     case (long)Http3StreamType.WebTransportUnidirectional:
                         long sessionId;
                         VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan.Slice(bytesRead), out sessionId, out bytesRead);
-                        Console.Write("Catched it nailed it unidir stream" + stream.Id + " " + sessionId + " " + stream.CanRead);
                         quicStream = null;
 
                         //buffer.Commit(bytesRead);
@@ -872,7 +852,6 @@ namespace System.Net.Http
                             throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.SettingsError);
                     }
                 }
-                Console.Write("I am here 2");
 
                 _expectedSettingsFrameProcessed.TrySetResult();
             }

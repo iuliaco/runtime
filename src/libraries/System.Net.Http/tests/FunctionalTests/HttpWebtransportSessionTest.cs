@@ -161,12 +161,10 @@ namespace System.Net.Http.Functional.Tests
 
                     var wtServerBidirectionalStream = await connection.OpenBidirectionalWTStreamAsync(stream.StreamId);
                     await semaphore.WaitAsync();
-                    Console.WriteLine(wtServerBidirectionalStream.CanWrite + "Pot scrie sau ceva?");
                     byte[] recvBytes = new byte[18];
                     string s = "Hello World ";
                     recvBytes = Encoding.ASCII.GetBytes(s);
                     QuicException ex = await Assert.ThrowsAsync<QuicException>(async () => await wtServerBidirectionalStream.SendDataStreamAsync(recvBytes).ConfigureAwait(false));
-                    Console.WriteLine(ex.ApplicationErrorCode + " Pot scrie sau ceva??????????????????????");
                     Assert.Equal(276659048, ex.ApplicationErrorCode);
                     semaphore.Release();
                 }
@@ -213,12 +211,10 @@ namespace System.Net.Http.Functional.Tests
                     var wtServerBidirectionalStream = await connection.OpenBidirectionalWTStreamAsync(stream.StreamId + 1);
                     await Task.Delay(500);
 
-                    Console.WriteLine(wtServerBidirectionalStream.CanWrite + "Pot scrie sau ceva?");
                     byte[] recvBytes = new byte[18];
                     string s = "Hellp world";
                     recvBytes = Encoding.ASCII.GetBytes(s);
                     QuicException ex = await Assert.ThrowsAsync<QuicException>(async () => await wtServerBidirectionalStream.SendDataStreamAsync(recvBytes).ConfigureAwait(false));
-                    Console.WriteLine(ex.ApplicationErrorCode + " Pot scrie sau ceva??????????????????????");
                     Assert.Equal(966049156, ex.ApplicationErrorCode);
                     semaphore.Release();
 
@@ -230,8 +226,6 @@ namespace System.Net.Http.Functional.Tests
                 Http3WebtransportSession.SetHttpClient(CreateHttpClientHandler());
                 Http3WebtransportSession session = await Http3WebtransportSession.ConnectAsync(server.Address, CancellationToken.None);
                 await semaphore.WaitAsync();
-
-                //await Task.Delay(5_000);
 
             });
 
@@ -573,12 +567,10 @@ namespace System.Net.Http.Functional.Tests
                 stream = await connection.AcceptRequestStreamAsync();
                 await stream.ReadRequestDataAsync(false);
                 await stream.SendResponseAsync(HttpStatusCode.OK, headers, "", false);
-                Console.WriteLine("AJUNG AICI 2");
                 stream = await connection.AcceptRequestStreamAsync();
                 await stream.ReadRequestDataAsync(false);
                 await stream.SendResponseAsync(HttpStatusCode.OK, headers, "", false);
                 await stream.DisposeAsync();
-                Console.WriteLine("AJUNG AICI4");
                 semaphore.Release();
                 await connection.CloseAsync(10000);
                 semaphore.Release();

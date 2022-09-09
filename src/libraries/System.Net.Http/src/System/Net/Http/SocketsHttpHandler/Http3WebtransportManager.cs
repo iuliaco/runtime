@@ -30,10 +30,7 @@ namespace System.Net.Http
 
         public bool AddSession(QuicStream connectStream, Http3WebtransportSession webtransportSession)
         {
-
             bool ans = sessions.TryAdd(connectStream.Id, webtransportSession);
-            Console.WriteLine("Oareeee h3conn 3 " + sessions.Count + ans);
-
             return ans;
         }
 
@@ -45,7 +42,6 @@ namespace System.Net.Http
             // https://datatracker.ietf.org/doc/html/draft-ietf-webtrans-http3#section-4
             if (session == null)
             {
-                Console.WriteLine("Throw error");
                 stream.Abort(QuicAbortDirection.Both, (long)Http3ErrorCode.WebtransportBufferedStreamRejected);
                 return;
             }
@@ -54,7 +50,6 @@ namespace System.Net.Http
 
         public void DeleteSession(long id)
         {
-            Console.WriteLine("Ma scot singur hatz");
             sessions.TryRemove(id, out _);
         }
 

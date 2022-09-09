@@ -60,10 +60,8 @@ namespace System.Net.Http
             // _streams = new ConcurrentDictionary<long, QuicStream>();
             _connectStream = connectStream;
             _connection = connection;
-            Console.WriteLine("created object");
             _ = _connectStream.WritesClosed.ContinueWith(async t =>
             {
-                Console.WriteLine("Server closed stream");
                 await DisposeAsync().ConfigureAwait(false);
 
             }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
@@ -98,10 +96,8 @@ namespace System.Net.Http
                 Task<HttpResponseMessage> sendTask = WebtransportClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
                 var response = await sendTask.ConfigureAwait(false);
                 WebtransportHttpContent connectedWebtransSessionContent = (WebtransportHttpContent)response.Content;
-                Console.WriteLine("inceeeerc: 2");
 
                 webSes = connectedWebtransSessionContent.webtransportSession;
-
             }
             catch (HttpRequestException ex)
             {
@@ -118,7 +114,6 @@ namespace System.Net.Http
         {
             if (_disposed == 1)
                 return null;
-            Console.WriteLine("Connect stream " + _connectStream.CanRead);
             QuicStream quicStream = await IncomingStreamsQueue.Reader.ReadAsync().ConfigureAwait(false);
             return quicStream;
         }
@@ -210,10 +205,6 @@ namespace System.Net.Http
             await AbortIncomingSessionWebtransportStreams((long)0x107d7b68).ConfigureAwait(false);
 
             await _connectStream.DisposeAsync().ConfigureAwait(false);
-            Console.WriteLine("StackTrace: '{0}'", Environment.StackTrace);
-
-            Console.WriteLine("Dau abort cu eroarea buna");
-
         }
 
         public void Dispose()
