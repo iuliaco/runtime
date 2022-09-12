@@ -27,9 +27,8 @@ namespace System.Net.Http
     {
         private readonly QuicStream _connectStream;
         private readonly QuicConnection _connection;
-        private static HttpClient? _httpClient;
+        private static HttpMessageInvoker? s_defaultInvoker;
 
-        public static HttpClient WebtransportClient => _httpClient ??= new HttpClient();
         public long id
         {
             get { return _connectStream.Id; }
@@ -69,23 +68,15 @@ namespace System.Net.Http
         }
 
         /// <summary>
-        /// Creates a client for the webtransport session.
-        /// </summary>
-        public static void SetHttpClient(HttpClientHandler handler)
-        {
-            _httpClient = new HttpClient(handler);
-        }
-
-        public static void SetHttpClient(HttpClient client)
-        {
-            _httpClient = client;
-        }
-
-        /// <summary>
         /// Creates a webtransport session by creating a webtransport connect request, sending it to <see cref="Uri">uri</see>.
         /// </summary>
-        public static async ValueTask<Http3WebtransportSession?> ConnectAsync(Uri uri, CancellationToken cancellationToken)
+        public static async ValueTask<Http3WebtransportSession?> ConnectAsync(Uri uri, HttpMessageInvoker? invoker, CancellationToken cancellationToken)
         {
+            if (invoker is null)
+            {
+                s_defaultInvoker ??= new HttpMessageInvoker(new HttpClientHandler());
+                invoker = s_defaultInvoker;
+            }
 
             Http3WebtransportSession? webSes;
             try
@@ -93,7 +84,7 @@ namespace System.Net.Http
                 HttpRequestMessage request;
                 request = new HttpRequestMessage(HttpMethod.Connect, uri) { Version = HttpVersion.Version30, VersionPolicy = HttpVersionPolicy.RequestVersionExact };
                 request.Headers.Protocol = WebTransportProtocolValue;
-                Task<HttpResponseMessage> sendTask = WebtransportClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                Task<HttpResponseMessage> sendTask = invoker is HttpClient client ? client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken) : invoker.SendAsync(request, cancellationToken);
                 var response = await sendTask.ConfigureAwait(false);
                 WebtransportHttpContent connectedWebtransSessionContent = (WebtransportHttpContent)response.Content;
 
@@ -106,6 +97,7 @@ namespace System.Net.Http
 
             return webSes;
         }
+
 
         /// <summary>
         /// Takes the next incoming <see cref="QuicStream">quic stream from the server</see>.

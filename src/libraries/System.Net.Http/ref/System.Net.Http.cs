@@ -308,14 +308,10 @@ namespace System.Net.Http
     public partial class Http3WebtransportSession : System.IAsyncDisposable, IDisposable
     {
         public long id { get { throw null; } }
-        public static HttpClient WebtransportClient { get { throw null; } }
-
         public bool GetStreamStatus()  { throw null; }
-        public static void SetHttpClient(HttpClientHandler handler) { throw null; }
-        public static void SetHttpClient(HttpClient client) { throw null; }
         public System.Threading.Channels.Channel<System.Net.Quic.QuicStream> IncomingStreamsQueue { get { throw null; } }
         public Http3WebtransportSession(System.Net.Quic.QuicConnection connection, System.Net.Quic.QuicStream connectStream) { }
-        public static System.Threading.Tasks.ValueTask<Http3WebtransportSession?> ConnectAsync(Uri uri, System.Threading.CancellationToken cancellationToken) { throw null; }
+        public static System.Threading.Tasks.ValueTask<Http3WebtransportSession?> ConnectAsync(Uri uri, HttpMessageInvoker? invoker, System.Threading.CancellationToken cancellationToken) { throw null; }
         public System.Threading.Tasks.ValueTask<System.Net.Quic.QuicStream?> GetIncomingWTStreamFromServerAsync() { throw null; }
         public System.Threading.Tasks.ValueTask<System.Net.Quic.QuicStream?> OpenWebtransportStreamAsync(System.Net.Quic.QuicStreamType type) { throw null; }
         public System.Threading.Tasks.ValueTask DisposeAsync() { throw null; }
