@@ -557,7 +557,6 @@ namespace System.Net.Http
 
                 buffer.Commit(bytesRead);
                 VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan, out long streamType, out bytesRead);
-                // Stream type is a variable-length integer, but we only check the first byte. There is no known type requiring more than 1 byte.
                 switch (streamType)
                 {
                     case (byte)Http3StreamType.Control:
