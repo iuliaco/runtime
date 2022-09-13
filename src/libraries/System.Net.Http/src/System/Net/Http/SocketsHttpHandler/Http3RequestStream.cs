@@ -1324,7 +1324,7 @@ namespace System.Net.Http
         {
             if(isWebtransportSessionStream)
             {
-                bool found = _connection.WTManager!.sessions.TryGetValue(StreamId, out Http3WebtransportSession? session);
+                bool found = _connection.WTManager!.FindSession(StreamId, out Http3WebtransportSession? session);
                 if(found)
                     session!.Dispose();
             }

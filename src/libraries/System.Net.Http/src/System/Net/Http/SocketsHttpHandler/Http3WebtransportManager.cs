@@ -21,25 +21,30 @@ namespace System.Net.Http
     [SupportedOSPlatform("macos")]
     internal sealed class Http3WebtransportManager : IDisposable, IAsyncDisposable
     {
-        public ConcurrentDictionary<long, Http3WebtransportSession> sessions;
+        private ConcurrentDictionary<long, Http3WebtransportSession> _sessions;
         private QuicConnection _connection;
 
         public Http3WebtransportManager(QuicConnection connection)
         {
-            sessions = new ConcurrentDictionary<long, Http3WebtransportSession>();
+            _sessions = new ConcurrentDictionary<long, Http3WebtransportSession>();
             _connection = connection;
         }
 
         public bool AddSession(QuicStream connectStream, Http3WebtransportSession webtransportSession)
         {
-            bool ans = sessions.TryAdd(connectStream.Id, webtransportSession);
+            bool ans = _sessions.TryAdd(connectStream.Id, webtransportSession);
             return ans;
+        }
+
+        public bool FindSession(long streamId, out Http3WebtransportSession? session)
+        {
+            return _sessions.TryGetValue(streamId, out session);
         }
 
         public void AcceptServerStream(QuicStream stream, long sessionId)
         {
             Http3WebtransportSession? session;
-            sessions.TryGetValue(sessionId, out session);
+            _sessions.TryGetValue(sessionId, out session);
             // if no session with that id exists throw exception
             // https://datatracker.ietf.org/doc/html/draft-ietf-webtrans-http3#section-4
             if (session == null)
@@ -86,32 +91,32 @@ namespace System.Net.Http
 
         public void DeleteSession(long id)
         {
-            sessions.TryRemove(id, out _);
+            _sessions.TryRemove(id, out _);
         }
 
         public async ValueTask DisposeAsync()
         {
             List<long> toRemove = new List<long>();
-            foreach (KeyValuePair<long, Http3WebtransportSession> pair in sessions)
+            foreach (KeyValuePair<long, Http3WebtransportSession> pair in _sessions)
             {
                toRemove.Add(pair.Key);
             }
 
             foreach (long id in toRemove)
             {
-                await sessions[id].DisposeAsync().ConfigureAwait(false);
+                await _sessions[id].DisposeAsync().ConfigureAwait(false);
             }
         }
         public void Dispose()
         {
             List<long> toRemove = new List<long>();
-            foreach (KeyValuePair<long, Http3WebtransportSession> pair in sessions)
+            foreach (KeyValuePair<long, Http3WebtransportSession> pair in _sessions)
             {
                 toRemove.Add(pair.Key);
             }
             foreach (long id in toRemove)
             {
-                sessions[id].Dispose();
+                _sessions[id].Dispose();
             }
         }
     }

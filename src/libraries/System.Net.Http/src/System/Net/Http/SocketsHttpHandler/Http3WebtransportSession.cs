@@ -138,7 +138,7 @@ namespace System.Net.Http
         }
         private void RemoveFromSessionsDictionary()
         {
-            _WTManager!.DeleteSession(Id);
+            _WTManager.DeleteSession(Id);
         }
 
         public async ValueTask DisposeAsync()

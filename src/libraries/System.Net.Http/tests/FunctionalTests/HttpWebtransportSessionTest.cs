@@ -258,7 +258,7 @@ namespace System.Net.Http.Functional.Tests
                     await stream.SendResponseAsync(HttpStatusCode.OK, headers, "", false);
                     for (int i = 0; i < 20; i++)
                     {
-                        Http3LoopbackStream clientStream = await connection.AcceptWebtransportStreamAsync();
+                        Http3LoopbackStream clientStream = await connection.AcceptRequestStreamAsync(false);
                         (long? frameType, long? sessionId) = await clientStream.ReadWTFrameAsync();
                         Assert.Equal(stream.StreamId, sessionId);
                         byte[] recvBytes = new byte[20];
@@ -330,7 +330,7 @@ namespace System.Net.Http.Functional.Tests
 
                     for (int i = 0; i < 20; i++)
                     {
-                        Http3LoopbackStream clientStream = await connection.AcceptWebtransportStreamAsync();
+                        Http3LoopbackStream clientStream = await connection.AcceptRequestStreamAsync(false);
                         (long? frameType, long? sessionId) = await clientStream.ReadWTFrameAsync();
                         Assert.Equal(stream.StreamId, sessionId);
                         byte[] recvBytes = new byte[20];

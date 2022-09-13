@@ -61,12 +61,11 @@ namespace System.Net.Test.Common
             await _stream.WriteAsync(buffer.AsMemory(0, bytesWritten)).ConfigureAwait(false);
         }
 
-        public async Task SendWTStreamHeaderAsync(long streamType, long? sessionId)
+        public async Task SendWTStreamHeaderAsync(long streamType, long sessionId)
         {
-            long sessionIds = sessionId ?? 0;
             var buffer = new byte[MaximumVarIntBytes];
             int bytesWritten = EncodeHttpInteger(streamType, buffer);
-            bytesWritten += EncodeHttpInteger(sessionIds, buffer.AsSpan(bytesWritten));
+            bytesWritten += EncodeHttpInteger(sessionId, buffer.AsSpan(bytesWritten));
             await _stream.WriteAsync(buffer.AsMemory(0, bytesWritten)).ConfigureAwait(false);
         }
 
