@@ -55,7 +55,7 @@ namespace System.Net.Http.Functional.Tests
 
             Task serverTask = Task.Run(async () =>
             {
-                await using Http3LoopbackConnection connection = (Http3LoopbackConnection)await server.EstablishSettingsFrameGenericConnectionAsync();
+                await server.EstablishSettingsFrameGenericConnectionAsync();
 
             });
 

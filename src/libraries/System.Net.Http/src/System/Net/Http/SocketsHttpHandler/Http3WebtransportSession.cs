@@ -105,12 +105,12 @@ namespace System.Net.Http
         {
             if (_disposed == 1)
             {
-                // WebtransportSessionGone
-                stream.Abort(QuicAbortDirection.Read, (long)0x107d7b68);
+                // WebtransportSessionGone error code
+                stream.Abort(QuicAbortDirection.Read, 0x107d7b68);
                 return;
             }
 
-            bool added = _incomingStreamsQueue.Writer.TryWrite(stream); //_streams.TryAdd(stream.Id, stream);
+            bool added = _incomingStreamsQueue.Writer.TryWrite(stream);
             Debug.Assert(added);
         }
 
