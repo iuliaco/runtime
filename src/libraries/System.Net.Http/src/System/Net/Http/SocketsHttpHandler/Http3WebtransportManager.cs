@@ -11,13 +11,15 @@ using System.Net.Security;
 using System.Text;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using System.Diagnostics;
+using System.Threading;
 
 namespace System.Net.Http
 {
     [SupportedOSPlatform("windows")]
     [SupportedOSPlatform("linux")]
     [SupportedOSPlatform("macos")]
-    internal sealed class Http3WebtransportManager
+    internal sealed class Http3WebtransportManager : IDisposable, IAsyncDisposable
     {
         public ConcurrentDictionary<long, Http3WebtransportSession> sessions;
         private QuicConnection _connection;
@@ -48,10 +50,69 @@ namespace System.Net.Http
             session.AcceptServerStream(stream);
         }
 
+        public async ValueTask<QuicStream?> CreateClientStream(QuicStreamType type, long sessionId)
+        {
+            QuicStream clientWTStream;
+            try
+            {
+                clientWTStream = await _connection.OpenOutboundStreamAsync(type).ConfigureAwait(false);
+                if (type == QuicStreamType.Unidirectional)
+                    await clientWTStream.WriteAsync(BuildWebtransportStreamClientFrame(type, sessionId), default).ConfigureAwait(false);
+                else
+                    await clientWTStream.WriteAsync(BuildWebtransportStreamClientFrame(type, sessionId), default).ConfigureAwait(false);
+
+                return clientWTStream;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        private byte[] BuildWebtransportStreamClientFrame(QuicStreamType type, long sessionId)
+        {
+            Span<byte> buffer = stackalloc byte[2 + VariableLengthIntegerHelper.MaximumEncodedLength];
+            int webtransportLength;
+            if (type == QuicStreamType.Unidirectional)
+                webtransportLength = VariableLengthIntegerHelper.WriteInteger(buffer.Slice(0), (long)Http3StreamType.WebTransportUnidirectional);
+            else
+                webtransportLength = VariableLengthIntegerHelper.WriteInteger(buffer.Slice(0), (long)Http3StreamType.WebTransportBidirectional);
+            int webtransportSessionLength = VariableLengthIntegerHelper.WriteInteger(buffer.Slice(2), (long)sessionId);
+            int payloadLength = webtransportLength + webtransportSessionLength; // includes the webtransport stream and the session id
+            Debug.Assert(payloadLength <= VariableLengthIntegerHelper.OneByteLimit);
+
+            return buffer.Slice(0, payloadLength).ToArray();
+        }
+
         public void DeleteSession(long id)
         {
             sessions.TryRemove(id, out _);
         }
 
+        public async ValueTask DisposeAsync()
+        {
+            List<long> toRemove = new List<long>();
+            foreach (KeyValuePair<long, Http3WebtransportSession> pair in sessions)
+            {
+               toRemove.Add(pair.Key);
+            }
+
+            foreach (long id in toRemove)
+            {
+                await sessions[id].DisposeAsync().ConfigureAwait(false);
+            }
+        }
+        public void Dispose()
+        {
+            List<long> toRemove = new List<long>();
+            foreach (KeyValuePair<long, Http3WebtransportSession> pair in sessions)
+            {
+                toRemove.Add(pair.Key);
+            }
+            foreach (long id in toRemove)
+            {
+                sessions[id].Dispose();
+            }
+        }
     }
 }

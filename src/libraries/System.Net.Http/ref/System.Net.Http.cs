@@ -305,12 +305,10 @@ namespace System.Net.Http
     [SupportedOSPlatform("macos")]
     [UnsupportedOSPlatform("browser")]
 
-    public partial class Http3WebtransportSession : System.IAsyncDisposable, IDisposable
+    public sealed class Http3WebtransportSession : System.IAsyncDisposable, IDisposable
     {
-        public long id { get { throw null; } }
-        public bool GetStreamStatus()  { throw null; }
-        public System.Threading.Channels.Channel<System.Net.Quic.QuicStream> IncomingStreamsQueue { get { throw null; } }
-        public Http3WebtransportSession(System.Net.Quic.QuicConnection connection, System.Net.Quic.QuicStream connectStream) { }
+        public long Id { get { throw null; } }
+        internal Http3WebtransportSession() { }
         public static System.Threading.Tasks.ValueTask<Http3WebtransportSession?> ConnectAsync(Uri uri, HttpMessageInvoker? invoker, System.Threading.CancellationToken cancellationToken) { throw null; }
         public System.Threading.Tasks.ValueTask<System.Net.Quic.QuicStream?> GetIncomingWTStreamFromServerAsync() { throw null; }
         public System.Threading.Tasks.ValueTask<System.Net.Quic.QuicStream?> OpenWebtransportStreamAsync(System.Net.Quic.QuicStreamType type) { throw null; }

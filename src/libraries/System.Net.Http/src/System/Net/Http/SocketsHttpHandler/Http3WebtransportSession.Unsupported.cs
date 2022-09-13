@@ -17,10 +17,8 @@ namespace System.Net.Http
     [UnsupportedOSPlatform("browser")]
     public class Http3WebtransportSession : IAsyncDisposable, IDisposable
     {
-        public long id { get => throw new PlatformNotSupportedException(); }
-        public bool GetStreamStatus() => throw new PlatformNotSupportedException();
-        public System.Threading.Channels.Channel<System.Net.Quic.QuicStream> IncomingStreamsQueue { get => throw new PlatformNotSupportedException(); }
-        public Http3WebtransportSession(System.Net.Quic.QuicConnection connection, System.Net.Quic.QuicStream connectStream) => throw new PlatformNotSupportedException();
+        internal Http3WebtransportSession() => throw new PlatformNotSupportedException();
+        public long Id { get => throw new PlatformNotSupportedException(); }
         public System.Threading.Tasks.ValueTask<QuicStream?> GetIncomingWTStreamFromServerAsync() => throw new PlatformNotSupportedException();
         public ValueTask DisposeAsync() => throw new PlatformNotSupportedException();
         public static ValueTask<Http3WebtransportSession?> ConnectAsync(Uri uri, HttpMessageInvoker? invoker, CancellationToken cancellationToken) => throw new PlatformNotSupportedException();
