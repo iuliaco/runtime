@@ -84,8 +84,7 @@ namespace System.Net.Http
                 {
                     await webtransportSession.AbortIncomingSessionWebtransportStreams((long)Http3ErrorCode.WebtransportBufferedStreamRejected).ConfigureAwait(false);
                     await webtransportSession.DisposeAsync().ConfigureAwait(false);
-                    HttpRequestException exception = new(SR.net_webtransport_server_rejected);
-                    throw exception;
+                    throw new(SR.net_webtransport_server_rejected);
                 }
             }
             catch (HttpRequestException ex)

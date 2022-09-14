@@ -187,8 +187,7 @@ namespace System.Net.Http
                     await _expectedSettingsFrameProcessed.Task.ConfigureAwait(false);
                     if (EnableWebTransport is false)
                     {
-                        HttpRequestException exception = new(SR.net_unsupported_webtransport);
-                        throw exception;
+                        throw new(SR.net_unsupported_webtransport);
                     }
                     WebtransportManager ??= new Http3WebtransportManager(_connection!);
                 }
