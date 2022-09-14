@@ -133,12 +133,8 @@ namespace System.Net.Http
 
             if (_connection != null)
             {
+                WebtransportManager?.Dispose();
                 // Close the QuicConnection in the background.
-                if (WebtransportManager is not null)
-                {
-                    WebtransportManager!.Dispose();
-                }
-
                 _connectionClosedTask ??= _connection.CloseAsync((long)Http3ErrorCode.NoError).AsTask();
 
                 QuicConnection connection = _connection;
@@ -294,10 +290,7 @@ namespace System.Net.Http
             // Stop sending requests to this connection.
             _pool.InvalidateHttp3Connection(this);
 
-            if (WebtransportManager is not null)
-            {
-                WebtransportManager!.Dispose();
-            }
+            WebtransportManager?.Dispose();
 
             long connectionResetErrorCode = (abortException as HttpProtocolException)?.ErrorCode ?? (long)Http3ErrorCode.InternalError;
 
