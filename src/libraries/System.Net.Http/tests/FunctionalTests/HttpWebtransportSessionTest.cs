@@ -55,7 +55,7 @@ namespace System.Net.Http.Functional.Tests
 
             Task serverTask = Task.Run(async () =>
             {
-                await server.EstablishSettingsFrameGenericConnectionAsync();
+                await server.EstablishGenericConnectionAsync();
 
             });
 
@@ -77,7 +77,7 @@ namespace System.Net.Http.Functional.Tests
             {
                 ICollection<(long settingId, long settingValue)> settings = new LinkedList<(long settingId, long settingValue)>();
                 settings.Add((Http3LoopbackStream.EnableWebTransport, 1));
-                await using Http3LoopbackConnection connection = (Http3LoopbackConnection)await server.EstablishSettingsFrameGenericConnectionAsync(settings);
+                await using Http3LoopbackConnection connection = (Http3LoopbackConnection)await server.EstablishGenericConnectionAsync(settings);
                 (Http3LoopbackStream settingsStream, Http3LoopbackStream stream) = await connection.AcceptControlAndRequestStreamAsync();
 
                 await using (settingsStream)
@@ -107,7 +107,7 @@ namespace System.Net.Http.Functional.Tests
             {
                 ICollection<(long settingId, long settingValue)> settings = new LinkedList<(long settingId, long settingValue)>();
                 settings.Add((Http3LoopbackStream.EnableWebTransport, 1));
-                await using Http3LoopbackConnection connection = (Http3LoopbackConnection)await server.EstablishSettingsFrameGenericConnectionAsync(settings);
+                await using Http3LoopbackConnection connection = (Http3LoopbackConnection)await server.EstablishGenericConnectionAsync(settings);
                 (Http3LoopbackStream settingsStream, Http3LoopbackStream stream) = await connection.AcceptControlAndRequestStreamAsync();
 
                 await using (settingsStream)
@@ -139,7 +139,7 @@ namespace System.Net.Http.Functional.Tests
             {
                 ICollection<(long settingId, long settingValue)> settings = new LinkedList<(long settingId, long settingValue)>();
                 settings.Add((Http3LoopbackStream.EnableWebTransport, 1));
-                await using Http3LoopbackConnection connection = (Http3LoopbackConnection)await server.EstablishSettingsFrameGenericConnectionAsync(settings);
+                await using Http3LoopbackConnection connection = (Http3LoopbackConnection)await server.EstablishGenericConnectionAsync(settings);
 
                 var headers = new List<HttpHeaderData>();
                 int contentLength = 2 * 1024 * 1024;
@@ -192,7 +192,7 @@ namespace System.Net.Http.Functional.Tests
             {
                 ICollection<(long settingId, long settingValue)> settings = new LinkedList<(long settingId, long settingValue)>();
                 settings.Add((Http3LoopbackStream.EnableWebTransport, 1));
-                await using Http3LoopbackConnection connection = (Http3LoopbackConnection)await server.EstablishSettingsFrameGenericConnectionAsync(settings);
+                await using Http3LoopbackConnection connection = (Http3LoopbackConnection)await server.EstablishGenericConnectionAsync(settings);
                 var headers = new List<HttpHeaderData>();
                 int contentLength = 2 * 1024 * 1024;
                 HttpHeaderData header = new HttpHeaderData("sec-webtransport-http3-draft", "draft02");
@@ -242,7 +242,7 @@ namespace System.Net.Http.Functional.Tests
             {
                 ICollection<(long settingId, long settingValue)> settings = new LinkedList<(long settingId, long settingValue)>();
                 settings.Add((Http3LoopbackStream.EnableWebTransport, 1));
-                await using Http3LoopbackConnection connection = (Http3LoopbackConnection)await server.EstablishSettingsFrameGenericConnectionAsync(settings);
+                await using Http3LoopbackConnection connection = (Http3LoopbackConnection)await server.EstablishGenericConnectionAsync(settings);
                 var headers = new List<HttpHeaderData>();
                 int contentLength = 2 * 1024 * 1024;
                 HttpHeaderData header = new HttpHeaderData("sec-webtransport-http3-draft", "draft02");
@@ -312,7 +312,7 @@ namespace System.Net.Http.Functional.Tests
             {
                 ICollection<(long settingId, long settingValue)> settings = new LinkedList<(long settingId, long settingValue)>();
                 settings.Add((Http3LoopbackStream.EnableWebTransport, 1));
-                await using Http3LoopbackConnection connection = (Http3LoopbackConnection)await server.EstablishSettingsFrameGenericConnectionAsync(settings);
+                await using Http3LoopbackConnection connection = (Http3LoopbackConnection)await server.EstablishGenericConnectionAsync(settings);
                 var headers = new List<HttpHeaderData>();
                 int contentLength = 1024;
                 HttpHeaderData header = new HttpHeaderData("sec-webtransport-http3-draft", "draft02");
@@ -375,7 +375,7 @@ namespace System.Net.Http.Functional.Tests
             {
                 ICollection<(long settingId, long settingValue)> settings = new LinkedList<(long settingId, long settingValue)>();
                 settings.Add((Http3LoopbackStream.EnableWebTransport, 1));
-                await using Http3LoopbackConnection connection = (Http3LoopbackConnection)await server.EstablishSettingsFrameGenericConnectionAsync(settings);
+                await using Http3LoopbackConnection connection = (Http3LoopbackConnection)await server.EstablishGenericConnectionAsync(settings);
                 var headers = new List<HttpHeaderData>();
                 int contentLength = 10;
                 HttpHeaderData header = new HttpHeaderData("sec-webtransport-http3-draft", "draft02");
@@ -448,7 +448,7 @@ namespace System.Net.Http.Functional.Tests
             {
                 ICollection<(long settingId, long settingValue)> settings = new LinkedList<(long settingId, long settingValue)>();
                 settings.Add((Http3LoopbackStream.EnableWebTransport, 1));
-                await using Http3LoopbackConnection connection = (Http3LoopbackConnection)await server.EstablishSettingsFrameGenericConnectionAsync(settings);
+                await using Http3LoopbackConnection connection = (Http3LoopbackConnection)await server.EstablishGenericConnectionAsync(settings);
                 var headers = new List<HttpHeaderData>();
                 int contentLength = 10;
                 HttpHeaderData header = new HttpHeaderData("sec-webtransport-http3-draft", "draft02");
@@ -507,7 +507,7 @@ namespace System.Net.Http.Functional.Tests
             {
                 ICollection<(long settingId, long settingValue)> settings = new LinkedList<(long settingId, long settingValue)>();
                 settings.Add((Http3LoopbackStream.EnableWebTransport, 1));
-                await using Http3LoopbackConnection connection = (Http3LoopbackConnection)await server.EstablishSettingsFrameGenericConnectionAsync(settings);
+                await using Http3LoopbackConnection connection = (Http3LoopbackConnection)await server.EstablishGenericConnectionAsync(settings);
                 var headers = new List<HttpHeaderData>();
                 int contentLength = 10;
                 HttpHeaderData header = new HttpHeaderData("sec-webtransport-http3-draft", "draft02");
@@ -559,7 +559,7 @@ namespace System.Net.Http.Functional.Tests
                 headers.Add(new HttpHeaderData("Content-Length", contentLength.ToString(CultureInfo.InvariantCulture)));
                 headers.Add(header);
 
-                await using Http3LoopbackConnection connection = (Http3LoopbackConnection)await server.EstablishSettingsFrameGenericConnectionAsync(settings);
+                await using Http3LoopbackConnection connection = (Http3LoopbackConnection)await server.EstablishGenericConnectionAsync(settings);
                 Http3LoopbackStream stream = await connection.AcceptRequestStreamAsync();
                 await stream.ReadRequestDataAsync(false);
                 await stream.SendResponseAsync(HttpStatusCode.OK, headers, "", false);

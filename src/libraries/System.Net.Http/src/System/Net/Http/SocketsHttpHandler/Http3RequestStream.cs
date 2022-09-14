@@ -31,7 +31,7 @@ namespace System.Net.Http
         private TaskCompletionSource<bool>? _expect100ContinueCompletionSource; // True indicates we should send content (e.g. received 100 Continue).
         private bool _disposed;
         private CancellationTokenSource _requestBodyCancellationSource;
-        internal bool isWebtransportSessionStream;
+      //  internal bool isWebtransportSessionStream;
 
         // Allocated when we receive a :status header.
         private HttpResponseMessage? _response;
@@ -1171,7 +1171,6 @@ namespace System.Net.Http
             try
             {
                 int totalBytesRead = 0;
-
                 do
                 {
                     if (_responseDataPayloadRemaining <= 0 && !await ReadNextDataFrameAsync(response, cancellationToken).ConfigureAwait(false))
@@ -1322,12 +1321,12 @@ namespace System.Net.Http
 
         private void AbortStream()
         {
-            if(isWebtransportSessionStream)
+            /*if(isWebtransportSessionStream)
             {
                 bool found = _connection.WebtransportManager!.FindSession(StreamId, out Http3WebtransportSession? session);
                 if(found)
                     session!.Dispose();
-            }
+            }*/
             // If the request body isn't completed, cancel it now.
             if (_requestContentLengthRemaining != 0) // 0 is used for the end of content writing, -1 is used for unknown Content-Length
             {

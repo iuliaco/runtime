@@ -253,32 +253,9 @@ namespace System.Net.Http
                     WebtransportManager!.AddSession(requestStream.quicStream, webtransportSession);
                     Task<HttpResponseMessage> responseWebtransportTask = requestStream.SendAsync(cancellationToken);
                     HttpResponseMessage response = await responseWebtransportTask.ConfigureAwait(false);
-
-                    if (response.IsSuccessStatusCode)
-                    {
-                        if (response.Headers.Contains(Http3WebtransportSession.VersionHeaderPrefix))
-                        {
-                            requestStream.isWebtransportSessionStream = true;
-                            response.Content = new WebtransportHttpContent(webtransportSession);
-                            requestStream = null;
-                            return response;
-                        }
-                        else
-                        {
-                            await webtransportSession.AbortIncomingSessionWebtransportStreams((long)Http3ErrorCode.WebtransportBufferedStreamRejected).ConfigureAwait(false);
-                            await webtransportSession.DisposeAsync().ConfigureAwait(false);
-                            HttpRequestException exception = new(SR.net_webtransport_server_rejected);
-                            throw exception;
-                        }
-
-                    }
-                    else
-                    {
-                        await webtransportSession.AbortIncomingSessionWebtransportStreams((long)Http3ErrorCode.WebtransportBufferedStreamRejected).ConfigureAwait(false);
-                        await webtransportSession.DisposeAsync().ConfigureAwait(false);
-                        HttpRequestException exception = new(SR.net_webtransport_server_rejected);
-                        throw exception;
-                    }
+                    response.Content = new WebtransportHttpContent(webtransportSession);
+                    requestStream = null;
+                    return response;
 
                 }
                 Task<HttpResponseMessage> responseTask = requestStream.SendAsync(cancellationToken);

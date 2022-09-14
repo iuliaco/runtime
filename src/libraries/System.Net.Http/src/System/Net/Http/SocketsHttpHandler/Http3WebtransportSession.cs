@@ -70,24 +70,30 @@ namespace System.Net.Http
                 invoker = s_defaultInvoker;
             }
 
-            Http3WebtransportSession? webSes;
+            Http3WebtransportSession? webtransportSession;
             try
             {
                 HttpRequestMessage request;
                 request = new HttpRequestMessage(HttpMethod.Connect, uri) { Version = HttpVersion.Version30, VersionPolicy = HttpVersionPolicy.RequestVersionExact };
                 request.Headers.Protocol = WebTransportProtocolValue;
                 Task<HttpResponseMessage> sendTask = invoker is HttpClient client ? client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken) : invoker.SendAsync(request, cancellationToken);
-                var response = await sendTask.ConfigureAwait(false);
+                HttpResponseMessage response = await sendTask.ConfigureAwait(false);
                 WebtransportHttpContent connectedWebtransSessionContent = (WebtransportHttpContent)response.Content;
-
-                webSes = connectedWebtransSessionContent.webtransportSession;
+                webtransportSession = connectedWebtransSessionContent.webtransportSession;
+                if (!response.IsSuccessStatusCode || !response.Headers.Contains(Http3WebtransportSession.VersionHeaderPrefix))
+                {
+                    await webtransportSession.AbortIncomingSessionWebtransportStreams((long)Http3ErrorCode.WebtransportBufferedStreamRejected).ConfigureAwait(false);
+                    await webtransportSession.DisposeAsync().ConfigureAwait(false);
+                    HttpRequestException exception = new(SR.net_webtransport_server_rejected);
+                    throw exception;
+                }
             }
             catch (HttpRequestException ex)
             {
                 throw ex;
             }
 
-            return webSes;
+            return webtransportSession;
         }
 
         /// <summary>
