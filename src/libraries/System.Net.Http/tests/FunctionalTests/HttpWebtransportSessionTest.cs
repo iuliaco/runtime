@@ -128,7 +128,6 @@ namespace System.Net.Http.Functional.Tests
             await new[] { clientTask, serverTask }.WhenAllOrAnyFailed(20_000);
         }
 
-
         [Fact]
         public async Task WebTransportSessionGoneError()
         {
@@ -162,7 +161,7 @@ namespace System.Net.Http.Functional.Tests
                     byte[] recvBytes = new byte[18];
                     string s = "Hello World ";
                     recvBytes = Encoding.ASCII.GetBytes(s);
-                    await Task.Delay(500);
+                    await semaphore.WaitAsync();
                     QuicException ex = await Assert.ThrowsAsync<QuicException>(async () => await wtServerBidirectionalStream.SendDataStreamAsync(recvBytes).ConfigureAwait(false));
                     Assert.Equal(276659048, ex.ApplicationErrorCode);
                     semaphore.Release();
@@ -173,6 +172,7 @@ namespace System.Net.Http.Functional.Tests
             {
                 using HttpClient client = CreateHttpClient();
                 Http3WebtransportSession session = await Http3WebtransportSession.ConnectAsync(server.Address, client, CancellationToken.None);
+                semaphore.Release();
                 await session.DisposeAsync();
                 semaphore.Release();
                 await semaphore.WaitAsync();
@@ -181,8 +181,6 @@ namespace System.Net.Http.Functional.Tests
             await new[] { clientTask, serverTask }.WhenAllOrAnyFailed(20_000);
         }
 
-
-        // Needs semaphore
         [Fact]
         public async Task WebtransportBufferedStreamError()
         {

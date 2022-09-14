@@ -246,18 +246,7 @@ namespace System.Net.Http
                 }
 
                 if (NetEventSource.Log.IsEnabled()) Trace($"Sending request: {request}");
-                Http3WebtransportSession webtransportSession;
-                if (request.IsWebTransportH3Request)
-                {
-                    webtransportSession = new Http3WebtransportSession(requestStream.quicStream, WebtransportManager!);
-                    WebtransportManager!.AddSession(requestStream.quicStream, webtransportSession);
-                    Task<HttpResponseMessage> responseWebtransportTask = requestStream.SendAsync(cancellationToken);
-                    HttpResponseMessage response = await responseWebtransportTask.ConfigureAwait(false);
-                    response.Content = new WebtransportHttpContent(webtransportSession);
-                    requestStream = null;
-                    return response;
 
-                }
                 Task<HttpResponseMessage> responseTask = requestStream.SendAsync(cancellationToken);
 
                 // null out requestStream to avoid disposing in finally block. It is now in charge of disposing itself.

@@ -142,6 +142,12 @@ namespace System.Net.Http
             bool shouldCancelBody = true;
             try
             {
+                Http3WebtransportSession? webtransportSession = null;
+                if (_request.IsWebTransportH3Request)
+                {
+                    webtransportSession = new Http3WebtransportSession(quicStream, _connection.WebtransportManager!);
+                    _connection.WebtransportManager!.AddSession(quicStream, webtransportSession);
+                }
                 BufferHeaders(_request);
 
                 // If using Expect 100 Continue, setup a TCS to wait to send content until we get a response.
@@ -216,7 +222,11 @@ namespace System.Net.Http
                 // we can close our Http3RequestStream immediately and return a singleton empty content stream. Otherwise, we
                 // need to return a Http3ReadStream which will be responsible for disposing the Http3RequestStream.
                 bool useEmptyResponseContent = responseContent.Headers.ContentLength == 0 && sendContentObserved;
-                if (useEmptyResponseContent)
+                if(_request.IsWebTransportH3Request)
+                {
+                    _response.Content = new WebtransportHttpContent(session: webtransportSession!);
+                }
+                else if (useEmptyResponseContent)
                 {
                     // Drain the response frames to read any trailing headers.
                     await DrainContentLength0Frames(_requestBodyCancellationSource.Token).ConfigureAwait(false);
