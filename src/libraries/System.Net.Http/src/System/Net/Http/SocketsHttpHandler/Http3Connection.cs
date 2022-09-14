@@ -38,7 +38,7 @@ namespace System.Net.Http
 
         // Current SETTINGS from the server.
         private int _maximumHeadersLength = int.MaxValue; // TODO: this is not yet observed by Http3Stream when buffering headers.
-        private int _enableWebTransport; // by default setted with 0
+        private bool _enableWebTransport; // by default setted with 0
         private TaskCompletionSource _expectedSettingsFrameProcessed = new TaskCompletionSource(); // True indicates that the settings frame was processed
         internal Http3WebtransportManager? WTManager;
 
@@ -58,7 +58,7 @@ namespace System.Net.Http
         public HttpConnectionPool Pool => _pool;
 
         public int MaximumRequestHeadersLength => _maximumHeadersLength;
-        public int EnableWebTransport => _enableWebTransport;
+        public bool EnableWebTransport => _enableWebTransport;
         public byte[]? AltUsedEncodedHeaderBytes => _altUsedEncodedHeader;
         public Exception? AbortException => Volatile.Read(ref _abortException);
         private object SyncObj => _activeRequests;
@@ -189,11 +189,12 @@ namespace System.Net.Http
                 if (request.IsWebTransportH3Request)
                 {
                     await _expectedSettingsFrameProcessed.Task.ConfigureAwait(false);
-                    if (EnableWebTransport == 0)
+                    if (EnableWebTransport is false)
                     {
                         HttpRequestException exception = new(SR.net_unsupported_webtransport);
                         throw exception;
                     }
+                    WTManager ??= new Http3WebtransportManager(_connection!);
                 }
                 try
                 {
@@ -604,7 +605,7 @@ namespace System.Net.Http
                         throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.IdError);
                     case (long)Http3StreamType.WebTransportBidirectional:
                     case (long)Http3StreamType.WebTransportUnidirectional:
-                        if (EnableWebTransport == 1)
+                        if (EnableWebTransport)
                         {
                             VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan.Slice(bytesRead), out long sessionId, out bytesRead);
                             quicStream = null;
@@ -823,8 +824,7 @@ namespace System.Net.Http
                             // connection with the H3_SETTINGS_ERROR error code.
                             if (settingValue != 0 && settingValue != 1)
                                 throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.SettingsError);
-                            _enableWebTransport = (int)settingValue;
-                            WTManager = new Http3WebtransportManager(_connection!);
+                            _enableWebTransport = (int)settingValue == 1 ? true : false;
                             break;
                         case Http3SettingType.ReservedHttp2EnablePush:
                         case Http3SettingType.ReservedHttp2MaxConcurrentStreams:
