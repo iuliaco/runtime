@@ -39,7 +39,7 @@ namespace System.Net.Http
         });
 
         private int _disposed;
-        internal Http3WebtransportManager _WTManager;
+        internal Http3WebtransportManager _WebtransportManager;
 
         internal const string WebTransportProtocolValue = "webtransport";
         internal const string VersionEnabledIndicator = "1";
@@ -49,7 +49,7 @@ namespace System.Net.Http
 
         internal Http3WebtransportSession(QuicStream connectStream, Http3WebtransportManager manager)
         {
-            _WTManager = manager;
+            _WebtransportManager = manager;
             _connectStream = connectStream;
             _ = _connectStream.WritesClosed.ContinueWith(async t =>
             {
@@ -134,11 +134,11 @@ namespace System.Net.Http
         {
             if (_disposed == 1)
                 return null;
-            return await _WTManager.CreateClientStream(type, Id).ConfigureAwait(false);
+            return await _WebtransportManager.CreateClientStream(type, Id).ConfigureAwait(false);
         }
         private void RemoveFromSessionsDictionary()
         {
-            _WTManager.DeleteSession(Id);
+            _WebtransportManager.DeleteSession(Id);
         }
 
         public async ValueTask DisposeAsync()

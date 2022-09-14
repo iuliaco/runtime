@@ -27,8 +27,8 @@ namespace System.Net.Test.Common
 
         public const long ControlStream = 0x0;
         public const long PushStream = 0x1;
-        public const long UniWTStream = 0x54;
-        public const long BiWTStream = 0x41;
+        public const long UnidirectionalWebtransportStream = 0x54;
+        public const long BidirectionalWebtransportStream = 0x41;
 
         public const long MaxHeaderListSize = 0x6;
         public const long EnableWebTransport = 0x2b603742;

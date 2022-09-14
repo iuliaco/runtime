@@ -202,14 +202,14 @@ namespace System.Net.Test.Common
         public async Task<Http3LoopbackStream> OpenUnidirectionalWTStreamAsync(long sessionId)
         {
             Http3LoopbackStream wtStream = await OpenUnidirectionalStreamAsync();
-            await wtStream.SendWTStreamHeaderAsync(Http3LoopbackStream.UniWTStream, sessionId);
+            await wtStream.SendWTStreamHeaderAsync(Http3LoopbackStream.UnidirectionalWebtransportStream, sessionId);
             return wtStream;
         }
 
         public async Task<Http3LoopbackStream> OpenBidirectionalWTStreamAsync(long sessionId)
         {
             Http3LoopbackStream wtStream = await OpenBidirectionalStreamAsync();
-            await wtStream.SendWTStreamHeaderAsync(Http3LoopbackStream.BiWTStream, sessionId);
+            await wtStream.SendWTStreamHeaderAsync(Http3LoopbackStream.BidirectionalWebtransportStream, sessionId);
             return wtStream;
         }
 
