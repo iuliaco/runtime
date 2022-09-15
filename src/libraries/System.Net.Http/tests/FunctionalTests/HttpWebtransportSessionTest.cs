@@ -533,7 +533,7 @@ namespace System.Net.Http.Functional.Tests
                 QuicStream help = await session.GetIncomingWTStreamFromServerAsync();
                 byte[] recvBytes = new byte[20];
                 recvBytes = Encoding.ASCII.GetBytes(s);
-                InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await help.WriteAsync(recvBytes, true, CancellationToken.None).ConfigureAwait(false));
+                await Assert.ThrowsAsync<InvalidOperationException>(async () => await help.WriteAsync(recvBytes, true, CancellationToken.None).ConfigureAwait(false));
 
                 await help.DisposeAsync();
             });
@@ -581,10 +581,10 @@ namespace System.Net.Http.Functional.Tests
                 await session2.DisposeAsync();
                 Http3WebtransportSession session3 = await Http3WebtransportSession.ConnectAsync(server.Address, client, CancellationToken.None);
                 await semaphore.WaitAsync();
-                Assert.Null(await session2.OpenWebtransportStreamAsync(QuicStreamType.Unidirectional));
-                Assert.Null(await session3.OpenWebtransportStreamAsync(QuicStreamType.Unidirectional));
+                await Assert.ThrowsAsync<ObjectDisposedException>(async () => await session2.OpenWebtransportStreamAsync(QuicStreamType.Unidirectional));
+                await Assert.ThrowsAsync<ObjectDisposedException>(async () => await session3.OpenWebtransportStreamAsync(QuicStreamType.Unidirectional));
                 await semaphore.WaitAsync();
-                Assert.Null(await session1.OpenWebtransportStreamAsync(QuicStreamType.Unidirectional));
+                await Assert.ThrowsAsync<ObjectDisposedException>(async () => await session1.OpenWebtransportStreamAsync(QuicStreamType.Unidirectional));
             });
 
             await new[] { clientTask, serverTask }.WhenAllOrAnyFailed(20_000);

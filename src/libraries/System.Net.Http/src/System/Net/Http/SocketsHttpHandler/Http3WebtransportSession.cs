@@ -57,6 +57,12 @@ namespace System.Net.Http
 
             }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
 
+            _ = _connectStream.ReadsClosed.ContinueWith(async t =>
+            {
+                await DisposeAsync().ConfigureAwait(false);
+
+            }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
+
         }
 
         /// <summary>
@@ -94,7 +100,7 @@ namespace System.Net.Http
         public async ValueTask<QuicStream?> GetIncomingWTStreamFromServerAsync()
         {
             if (_disposed == 1)
-                return null;
+                throw new ObjectDisposedException(nameof(Http3WebtransportSession));
             QuicStream quicStream = await _incomingStreamsQueue.Reader.ReadAsync().ConfigureAwait(false);
             return quicStream;
         }
@@ -131,7 +137,7 @@ namespace System.Net.Http
         public async ValueTask<QuicStream?> OpenWebtransportStreamAsync(QuicStreamType type)
         {
             if (_disposed == 1)
-                return null;
+                throw new ObjectDisposedException(nameof(Http3WebtransportSession));
             return await _WebtransportManager.CreateClientStream(type, Id).ConfigureAwait(false);
         }
         private void RemoveFromSessionsDictionary()
