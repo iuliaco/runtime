@@ -515,7 +515,12 @@ namespace System.Net.Http
                 }
 
                 buffer.Commit(bytesRead);
-                VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan, out long streamType, out bytesRead);
+                bool foundStreamType = VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan, out long streamType, out bytesRead);
+                while (foundStreamType is false)
+                {
+                    foundStreamType = VariableLengthIntegerHelper.TryRead(buffer.AvailableSpan, out streamType, out bytesRead);
+
+                }
                 switch (streamType)
                 {
                     case (byte)Http3StreamType.Control:

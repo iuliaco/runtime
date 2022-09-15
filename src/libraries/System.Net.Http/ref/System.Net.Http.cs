@@ -310,6 +310,7 @@ namespace System.Net.Http
         public long Id { get { throw null; } }
         internal Http3WebtransportSession() { }
         public static System.Threading.Tasks.ValueTask<Http3WebtransportSession?> ConnectAsync(Uri uri, HttpMessageInvoker? invoker, System.Threading.CancellationToken cancellationToken) { throw null; }
+        public bool TryGetIncomingWTStreamFromServer(out System.Net.Quic.QuicStream? quicStream) { throw null; }
         public System.Threading.Tasks.ValueTask<System.Net.Quic.QuicStream?> GetIncomingWTStreamFromServerAsync() { throw null; }
         public System.Threading.Tasks.ValueTask<System.Net.Quic.QuicStream?> OpenWebtransportStreamAsync(System.Net.Quic.QuicStreamType type) { throw null; }
         public System.Threading.Tasks.ValueTask DisposeAsync() { throw null; }

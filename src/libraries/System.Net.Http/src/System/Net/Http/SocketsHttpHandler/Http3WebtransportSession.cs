@@ -101,8 +101,23 @@ namespace System.Net.Http
         {
             if (_disposed == 1)
                 throw new ObjectDisposedException(nameof(Http3WebtransportSession));
-            QuicStream quicStream = await _incomingStreamsQueue.Reader.ReadAsync().ConfigureAwait(false);
-            return quicStream;
+            try
+            {
+                QuicStream quicStream = await _incomingStreamsQueue.Reader.ReadAsync().ConfigureAwait(false);
+                return quicStream;
+
+            }
+            catch (ChannelClosedException)
+            {
+                return null;
+            }
+        }
+
+        public bool TryGetIncomingWTStreamFromServer(out QuicStream? quicStream)
+        {
+            return _disposed == 1
+                ? throw new ObjectDisposedException(nameof(Http3WebtransportSession))
+                : _incomingStreamsQueue.Reader.TryRead(out quicStream);
         }
 
         internal void AcceptServerStream(QuicStream stream)
