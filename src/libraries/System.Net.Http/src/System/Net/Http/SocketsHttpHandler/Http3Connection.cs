@@ -187,7 +187,7 @@ namespace System.Net.Http
                     await _expectedSettingsFrameProcessed.Task.ConfigureAwait(false);
                     if (EnableWebTransport is false)
                     {
-                        throw new(SR.net_unsupported_webtransport);
+                        throw new HttpRequestException(SR.net_unsupported_webtransport);
                     }
                     WebtransportManager ??= new Http3WebtransportManager(_connection!);
                 }
@@ -781,8 +781,10 @@ namespace System.Net.Http
                             // an endpoint that receives a value other than "0" or "1" MUST close the
                             // connection with the H3_SETTINGS_ERROR error code.
                             if (settingValue != 0 && settingValue != 1)
+                            {
                                 throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.SettingsError);
-                            _enableWebTransport = (int)settingValue == 1 ? true : false;
+                            }
+                            _enableWebTransport = Convert.ToBoolean(settingValue);
                             break;
                         case Http3SettingType.ReservedHttp2EnablePush:
                         case Http3SettingType.ReservedHttp2MaxConcurrentStreams:

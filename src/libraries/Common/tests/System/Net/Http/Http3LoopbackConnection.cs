@@ -58,7 +58,7 @@ namespace System.Net.Test.Common
         }
 
         public long MaxHeaderListSize { get; private set; } = -1;
-        public long EnableWebtransport { get; private set; } = 0;
+        public bool EnableWebtransport { get; private set; } = false;
 
         public override async ValueTask DisposeAsync()
         {
@@ -156,7 +156,7 @@ namespace System.Net.Test.Common
 
                 Assert.Equal(Http3LoopbackStream.MaxHeaderListSize, settingId);
                 MaxHeaderListSize = settingValue;
-                EnableWebtransport = webtransportValue;
+                EnableWebtransport = Convert.ToBoolean(webtransportValue);
 
                 _inboundControlStream = controlStream;
             }

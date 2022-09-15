@@ -71,25 +71,18 @@ namespace System.Net.Http
             }
 
             Http3WebtransportSession? webtransportSession;
-            try
+            HttpRequestMessage request;
+            request = new HttpRequestMessage(HttpMethod.Connect, uri) { Version = HttpVersion.Version30, VersionPolicy = HttpVersionPolicy.RequestVersionExact };
+            request.Headers.Protocol = WebTransportProtocolValue;
+            Task<HttpResponseMessage> sendTask = invoker is HttpClient client ? client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken) : invoker.SendAsync(request, cancellationToken);
+            HttpResponseMessage response = await sendTask.ConfigureAwait(false);
+            WebtransportHttpContent connectedWebtransSessionContent = (WebtransportHttpContent)response.Content;
+            webtransportSession = connectedWebtransSessionContent.webtransportSession;
+            if (!response.IsSuccessStatusCode || !response.Headers.Contains(Http3WebtransportSession.VersionHeaderPrefix))
             {
-                HttpRequestMessage request;
-                request = new HttpRequestMessage(HttpMethod.Connect, uri) { Version = HttpVersion.Version30, VersionPolicy = HttpVersionPolicy.RequestVersionExact };
-                request.Headers.Protocol = WebTransportProtocolValue;
-                Task<HttpResponseMessage> sendTask = invoker is HttpClient client ? client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken) : invoker.SendAsync(request, cancellationToken);
-                HttpResponseMessage response = await sendTask.ConfigureAwait(false);
-                WebtransportHttpContent connectedWebtransSessionContent = (WebtransportHttpContent)response.Content;
-                webtransportSession = connectedWebtransSessionContent.webtransportSession;
-                if (!response.IsSuccessStatusCode || !response.Headers.Contains(Http3WebtransportSession.VersionHeaderPrefix))
-                {
-                    await webtransportSession.AbortIncomingSessionWebtransportStreams((long)Http3ErrorCode.WebtransportBufferedStreamRejected).ConfigureAwait(false);
-                    await webtransportSession.DisposeAsync().ConfigureAwait(false);
-                    throw new(SR.net_webtransport_server_rejected);
-                }
-            }
-            catch (HttpRequestException ex)
-            {
-                throw ex;
+                await webtransportSession.AbortIncomingSessionWebtransportStreams((long)Http3ErrorCode.WebtransportBufferedStreamRejected).ConfigureAwait(false);
+                await webtransportSession.DisposeAsync().ConfigureAwait(false);
+                throw new HttpRequestException(SR.net_webtransport_server_rejected);
             }
 
             return webtransportSession;

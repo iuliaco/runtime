@@ -83,7 +83,7 @@ namespace System.Net.Http.Functional.Tests
                 await using (settingsStream)
                 await using (stream)
                 {
-                    Assert.Equal(1, connection.EnableWebtransport);
+                    Assert.True(connection.EnableWebtransport);
                     await stream.ReadRequestDataAsync(false);
                     await stream.SendResponseAsync(HttpStatusCode.NotFound);
                 }
@@ -113,7 +113,7 @@ namespace System.Net.Http.Functional.Tests
                 await using (settingsStream)
                 await using (stream)
                 {
-                    Assert.Equal(1, connection.EnableWebtransport);
+                    Assert.True(connection.EnableWebtransport);
                     await stream.ReadRequestDataAsync(false);
                     await stream.SendResponseAsync();
                 }
@@ -152,7 +152,7 @@ namespace System.Net.Http.Functional.Tests
                 await using (settingsStream)
                 await using (stream)
                 {
-                    Assert.Equal(1, connection.EnableWebtransport);
+                    Assert.True(connection.EnableWebtransport);
                     await stream.ReadRequestDataAsync(false);
                     await stream.SendResponseAsync(HttpStatusCode.OK, headers, "", false);
 
@@ -201,7 +201,7 @@ namespace System.Net.Http.Functional.Tests
 
                 await using (stream)
                 {
-                    Assert.Equal(1, connection.EnableWebtransport);
+                    Assert.True(connection.EnableWebtransport);
                     await stream.ReadRequestDataAsync(false);
                     await stream.SendResponseAsync(HttpStatusCode.OK, headers, "", false);
 
@@ -251,7 +251,7 @@ namespace System.Net.Http.Functional.Tests
 
                 await using (stream)
                 {
-                    Assert.Equal(1, connection.EnableWebtransport);
+                    Assert.True(connection.EnableWebtransport);
                     await stream.ReadRequestDataAsync(false);
                     await stream.SendResponseAsync(HttpStatusCode.OK, headers, "", false);
                     for (int i = 0; i < 20; i++)
@@ -322,7 +322,7 @@ namespace System.Net.Http.Functional.Tests
                 await using (settingsStream)
                 await using (stream)
                 {
-                    Assert.Equal(1, connection.EnableWebtransport);
+                    Assert.True(connection.EnableWebtransport);
                     await stream.ReadRequestDataAsync(false);
                     await stream.SendResponseAsync(HttpStatusCode.OK, headers, "", false);
 
@@ -385,7 +385,7 @@ namespace System.Net.Http.Functional.Tests
                 await using (stream)
                 {
 
-                    Assert.Equal(1, connection.EnableWebtransport);
+                    Assert.True(connection.EnableWebtransport);
                     await stream.ReadRequestDataAsync(false);
                     await stream.SendResponseAsync(HttpStatusCode.OK, headers, "", false);
 
@@ -457,7 +457,7 @@ namespace System.Net.Http.Functional.Tests
 
                 await using (stream)
                 {
-                    Assert.Equal(1, connection.EnableWebtransport);
+                    Assert.True(connection.EnableWebtransport);
                     await stream.ReadRequestDataAsync(false);
                     await stream.SendResponseAsync(HttpStatusCode.OK, headers, "", false);
 
@@ -517,7 +517,7 @@ namespace System.Net.Http.Functional.Tests
 
                 await using (stream)
                 {
-                    Assert.Equal(1, connection.EnableWebtransport);
+                    Assert.True(connection.EnableWebtransport);
                     await stream.ReadRequestDataAsync(false);
                     await stream.SendResponseAsync(HttpStatusCode.OK, headers, "", false);
 
