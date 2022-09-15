@@ -61,14 +61,6 @@ namespace System.Net.Test.Common
             await _stream.WriteAsync(buffer.AsMemory(0, bytesWritten)).ConfigureAwait(false);
         }
 
-        public async Task SendWTStreamHeaderAsync(long streamType, long sessionId)
-        {
-            var buffer = new byte[MaximumVarIntBytes];
-            int bytesWritten = EncodeHttpInteger(streamType, buffer);
-            bytesWritten += EncodeHttpInteger(sessionId, buffer.AsSpan(bytesWritten));
-            await _stream.WriteAsync(buffer.AsMemory(0, bytesWritten)).ConfigureAwait(false);
-        }
-
         public async Task SendSettingsFrameAsync(ICollection<(long settingId, long settingValue)> settings = null)
         {
             settings ??= Array.Empty<(long settingId, long settingValue)>();
@@ -179,7 +171,7 @@ namespace System.Net.Test.Common
             await _stream.WriteAsync(framePayload).ConfigureAwait(false);
         }
 
-        static int EncodeHttpInteger(long longToEncode, Span<byte> buffer)
+        public static int EncodeHttpInteger(long longToEncode, Span<byte> buffer)
         {
             Debug.Assert(longToEncode >= 0);
             Debug.Assert(longToEncode <= VarIntMax);
@@ -471,17 +463,6 @@ namespace System.Net.Test.Common
             return (frameType, payload);
         }
 
-        public async Task<(long? frameType, long? session)> ReadWTFrameAsync()
-        {
-            long? frameType = await ReadIntegerAsync().ConfigureAwait(false);
-            if (frameType == null) return (null, null);
-
-            long? session = await ReadIntegerAsync().ConfigureAwait(false);
-            if (session == null) throw new Exception("Unable to read session; unexpected end of stream.");
-
-            return (frameType, session);
-        }
-
         public async Task<long?> ReadIntegerAsync()
         {
             byte[] buffer = new byte[MaximumVarIntBytes];
@@ -506,7 +487,7 @@ namespace System.Net.Test.Common
             return integerValue;
         }
 
-        static bool TryDecodeHttpInteger(ReadOnlySpan<byte> buffer, out long value, out int bytesRead)
+        public static bool TryDecodeHttpInteger(ReadOnlySpan<byte> buffer, out long value, out int bytesRead)
         {
             const byte LengthMask = 0xC0;
             const byte LengthOneByte = 0x00;

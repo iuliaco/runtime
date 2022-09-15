@@ -33,6 +33,49 @@ namespace System.Net.Http.Functional.Tests
         {
         }
 
+        private async Task SendWebtransportStreamHeaderAsync(QuicStream stream, long streamType, long sessionId)
+        {
+            var buffer = new byte[3];
+            int bytesWritten = Http3LoopbackStream.EncodeHttpInteger(streamType, buffer);
+            bytesWritten += Http3LoopbackStream.EncodeHttpInteger(sessionId, buffer.AsSpan(bytesWritten));
+            await stream.WriteAsync(buffer.AsMemory(0, bytesWritten)).ConfigureAwait(false);
+        }
+
+        private async Task<(long? frameType, long? session)> ReadWTFrameAsync(QuicStream stream)
+        {
+            long? frameType = await ReadIntegerAsync(stream).ConfigureAwait(false);
+            if (frameType == null) return (null, null);
+
+            long? session = await ReadIntegerAsync(stream).ConfigureAwait(false);
+            if (session == null) throw new Exception("Unable to read session; unexpected end of stream.");
+
+            return (frameType, session);
+        }
+
+        private async Task<long?> ReadIntegerAsync(QuicStream stream)
+        {
+            byte[] buffer = new byte[8];
+            int bufferActiveLength = 0;
+
+            long integerValue;
+            int bytesRead;
+
+            do
+            {
+                bytesRead = await stream.ReadAsync(buffer.AsMemory(bufferActiveLength++, 1)).ConfigureAwait(false);
+                if (bytesRead == 0)
+                {
+                    return bufferActiveLength == 1 ? (long?)null : throw new Exception("Unable to read varint; unexpected end of stream.");
+                }
+                Debug.Assert(bytesRead == 1);
+            }
+            while (!Http3LoopbackStream.TryDecodeHttpInteger(buffer.AsSpan(0, bufferActiveLength), out integerValue, out bytesRead));
+
+            Debug.Assert(bytesRead == bufferActiveLength);
+
+            return integerValue;
+        }
+
         [Fact]
         public async Task WebTransportWrongServerAddress()
         {
@@ -156,13 +199,14 @@ namespace System.Net.Http.Functional.Tests
                     await stream.ReadRequestDataAsync(false);
                     await stream.SendResponseAsync(HttpStatusCode.OK, headers, "", false);
 
-                    var wtServerBidirectionalStream = await connection.OpenBidirectionalWTStreamAsync(stream.StreamId);
+                    var wtServerBidirectionalStream = await connection.OpenWebtransportStreamAsync(QuicStreamType.Bidirectional);
+                    await SendWebtransportStreamHeaderAsync(wtServerBidirectionalStream, Http3LoopbackStream.BidirectionalWebtransportStream , stream.StreamId);
                     await semaphore.WaitAsync();
                     byte[] recvBytes = new byte[18];
                     string s = "Hello World ";
                     recvBytes = Encoding.ASCII.GetBytes(s);
                     await semaphore.WaitAsync();
-                    QuicException ex = await Assert.ThrowsAsync<QuicException>(async () => await wtServerBidirectionalStream.SendDataStreamAsync(recvBytes).ConfigureAwait(false));
+                    QuicException ex = await Assert.ThrowsAsync<QuicException>(async () => await wtServerBidirectionalStream.WriteAsync(recvBytes, true).ConfigureAwait(false));
                     Assert.Equal(276659048, ex.ApplicationErrorCode);
                     semaphore.Release();
                 }
@@ -205,14 +249,15 @@ namespace System.Net.Http.Functional.Tests
                     await stream.ReadRequestDataAsync(false);
                     await stream.SendResponseAsync(HttpStatusCode.OK, headers, "", false);
 
-                    var wtServerBidirectionalStream = await connection.OpenBidirectionalWTStreamAsync(stream.StreamId + 1);
+                    var wtServerBidirectionalStream = await connection.OpenWebtransportStreamAsync(QuicStreamType.Bidirectional);
+                    await SendWebtransportStreamHeaderAsync(wtServerBidirectionalStream, Http3LoopbackStream.BidirectionalWebtransportStream, stream.StreamId + 1);
                     // Delay needed so quic will not unify the header and the body of the wt stream
                     await Task.Delay(500);
 
                     byte[] recvBytes = new byte[18];
                     string s = "Hellp world";
                     recvBytes = Encoding.ASCII.GetBytes(s);
-                    QuicException ex = await Assert.ThrowsAsync<QuicException>(async () => await wtServerBidirectionalStream.SendDataStreamAsync(recvBytes).ConfigureAwait(false));
+                    QuicException ex = await Assert.ThrowsAsync<QuicException>(async () => await wtServerBidirectionalStream.WriteAsync(recvBytes, true).ConfigureAwait(false));
                     Assert.Equal(966049156, ex.ApplicationErrorCode);
                     semaphore.Release();
 
@@ -256,21 +301,21 @@ namespace System.Net.Http.Functional.Tests
                     await stream.SendResponseAsync(HttpStatusCode.OK, headers, "", false);
                     for (int i = 0; i < 20; i++)
                     {
-                        Http3LoopbackStream clientStream = await connection.AcceptRequestStreamAsync(false);
-                        (long? frameType, long? sessionId) = await clientStream.ReadWTFrameAsync();
+                        QuicStream clientStream = await connection.AcceptWebtransportStreamAsync();
+                        (long? frameType, long? sessionId) = await ReadWTFrameAsync(clientStream);
                         Assert.Equal(stream.StreamId, sessionId);
                         byte[] recvBytes = new byte[20];
 
-                        int bytesRead = await clientStream.ReadDataStreamAsync(recvBytes);
+                        int bytesRead = await clientStream.ReadAsync(recvBytes, CancellationToken.None).ConfigureAwait(false);
                         while (bytesRead != 0)
                         {
                             Assert.Equal((s + i).Substring(0, bytesRead), Encoding.ASCII.GetString(recvBytes).Substring(0, bytesRead));
                             recvBytes = new byte[20];
-                            bytesRead = await clientStream.ReadDataStreamAsync(recvBytes);
+                            bytesRead = await clientStream.ReadAsync(recvBytes, CancellationToken.None).ConfigureAwait(false);
 
                         }
                         recvBytes = Encoding.ASCII.GetBytes(s + i);
-                        await clientStream.SendDataStreamAsync(recvBytes).ConfigureAwait(false);
+                        await clientStream.WriteAsync(recvBytes, true).ConfigureAwait(false);
                     }
                 }
             });
@@ -328,16 +373,16 @@ namespace System.Net.Http.Functional.Tests
 
                     for (int i = 0; i < 20; i++)
                     {
-                        Http3LoopbackStream clientStream = await connection.AcceptRequestStreamAsync(false);
-                        (long? frameType, long? sessionId) = await clientStream.ReadWTFrameAsync();
+                        QuicStream clientStream = await connection.AcceptWebtransportStreamAsync();
+                        (long? frameType, long? sessionId) = await ReadWTFrameAsync(clientStream);
                         Assert.Equal(stream.StreamId, sessionId);
                         byte[] recvBytes = new byte[20];
-                        int bytesRead = await clientStream.ReadDataStreamAsync(recvBytes);
+                        int bytesRead = await clientStream.ReadAsync(recvBytes, CancellationToken.None).ConfigureAwait(false);
                         while (bytesRead != 0)
                         {
                             Assert.Equal((s + i).Substring(0, bytesRead), Encoding.ASCII.GetString(recvBytes).Substring(0, bytesRead));
                             recvBytes = new byte[20];
-                            bytesRead = await clientStream.ReadDataStreamAsync(recvBytes);
+                            bytesRead = await clientStream.ReadAsync(recvBytes, CancellationToken.None).ConfigureAwait(false);
 
                         }
                     }
@@ -391,18 +436,19 @@ namespace System.Net.Http.Functional.Tests
 
                     for (int i = 0; i < 20; i++)
                     {
-                        var wtServerBidirectionalStream = await connection.OpenBidirectionalWTStreamAsync(stream.StreamId);
+                        var wtServerBidirectionalStream = await connection.OpenWebtransportStreamAsync(QuicStreamType.Bidirectional);
+                        await SendWebtransportStreamHeaderAsync(wtServerBidirectionalStream, Http3LoopbackStream.BidirectionalWebtransportStream, stream.StreamId);
                         byte[] recvBytes = new byte[18];
                         int bytesRead = 0;
-                        bytesRead = await wtServerBidirectionalStream.ReadDataStreamAsync(recvBytes);
+                        bytesRead = await wtServerBidirectionalStream.ReadAsync(recvBytes, CancellationToken.None).ConfigureAwait(false);
                         while (bytesRead != 0)
                         {
                             Assert.Equal((s + i).Substring(0, bytesRead), Encoding.ASCII.GetString(recvBytes).Substring(0, bytesRead));
-                            bytesRead = await wtServerBidirectionalStream.ReadDataStreamAsync(recvBytes);
+                            bytesRead = await wtServerBidirectionalStream.ReadAsync(recvBytes, CancellationToken.None).ConfigureAwait(false);
 
                         }
                         recvBytes = Encoding.ASCII.GetBytes(s + i);
-                        await wtServerBidirectionalStream.SendDataStreamAsync(recvBytes).ConfigureAwait(false);
+                        await wtServerBidirectionalStream.WriteAsync(recvBytes, true).ConfigureAwait(false);
 
                     }
 
@@ -463,10 +509,11 @@ namespace System.Net.Http.Functional.Tests
 
                     for (int i = 0; i < 10; i++)
                     {
-                        var wtServerUnidirectionalStream = await connection.OpenUnidirectionalWTStreamAsync(stream.StreamId);
+                        var wtServerUnidirectionalStream = await connection.OpenWebtransportStreamAsync(QuicStreamType.Unidirectional);
+                        await SendWebtransportStreamHeaderAsync(wtServerUnidirectionalStream, Http3LoopbackStream.UnidirectionalWebtransportStream, stream.StreamId);
                         byte[] recvBytes = new byte[20];
                         recvBytes = Encoding.ASCII.GetBytes(s + i);
-                        await wtServerUnidirectionalStream.SendDataStreamAsync(recvBytes).ConfigureAwait(false);
+                        await wtServerUnidirectionalStream.WriteAsync(recvBytes, true).ConfigureAwait(false);
                     }
                 }
             });
@@ -521,8 +568,9 @@ namespace System.Net.Http.Functional.Tests
                     await stream.ReadRequestDataAsync(false);
                     await stream.SendResponseAsync(HttpStatusCode.OK, headers, "", false);
 
-                    var wtServerUnidirectionalStream = await connection.OpenUnidirectionalWTStreamAsync(stream.StreamId);
-                    
+                    var wtServerUnidirectionalStream = await connection.OpenWebtransportStreamAsync(QuicStreamType.Unidirectional);
+                    await SendWebtransportStreamHeaderAsync(wtServerUnidirectionalStream, Http3LoopbackStream.UnidirectionalWebtransportStream, stream.StreamId);
+
                 }
             });
 
