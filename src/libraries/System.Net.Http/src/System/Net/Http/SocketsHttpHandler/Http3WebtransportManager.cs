@@ -61,16 +61,13 @@ namespace System.Net.Http
             try
             {
                 clientWTStream = await _connection.OpenOutboundStreamAsync(type).ConfigureAwait(false);
-                if (type == QuicStreamType.Unidirectional)
-                    await clientWTStream.WriteAsync(BuildWebtransportStreamClientFrame(type, sessionId), default).ConfigureAwait(false);
-                else
-                    await clientWTStream.WriteAsync(BuildWebtransportStreamClientFrame(type, sessionId), default).ConfigureAwait(false);
+                await clientWTStream.WriteAsync(BuildWebtransportStreamClientFrame(type, sessionId), default).ConfigureAwait(false);
 
                 return clientWTStream;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return null;
+                throw ex;
             }
         }
 

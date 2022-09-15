@@ -250,11 +250,7 @@ namespace System.Net.Http
                 _response = null;
 
                 // If we're 100% done with the stream, dispose.
-                disposeSelf = useEmptyResponseContent;
-                if(_request.IsWebTransportH3Request)
-                {
-                    disposeSelf = false;
-                }
+                disposeSelf = useEmptyResponseContent && !_request.IsWebTransportH3Request;
 
                 // Success, don't cancel the body.
                 shouldCancelBody = false;
