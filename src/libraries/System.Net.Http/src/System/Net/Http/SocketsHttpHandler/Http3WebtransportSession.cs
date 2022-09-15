@@ -12,7 +12,6 @@ using System.Net.Http.Headers;
 using System.Net.Security;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Runtime.CompilerServices;
 using System.IO;
 using System.Threading.Channels;
 
@@ -51,6 +50,7 @@ namespace System.Net.Http
         {
             _WebtransportManager = manager;
             _connectStream = connectStream;
+            _WebtransportManager.AddSession(connectStream, this);
             _ = _connectStream.WritesClosed.ContinueWith(async t =>
             {
                 await DisposeAsync().ConfigureAwait(false);
@@ -138,7 +138,7 @@ namespace System.Net.Http
             // check if they were not aborted before
             if(_incomingStreamsQueue.Writer.TryComplete())
             {
-                var incomingStreams = _incomingStreamsQueue.Reader.ReadAllAsync().ConfigureAwait(false);
+                Runtime.CompilerServices.ConfiguredCancelableAsyncEnumerable<QuicStream> incomingStreams = _incomingStreamsQueue.Reader.ReadAllAsync().ConfigureAwait(false);
                 await foreach (QuicStream incomingStream in incomingStreams)
                 {
                     incomingStream.Abort(QuicAbortDirection.Read, errorCode);

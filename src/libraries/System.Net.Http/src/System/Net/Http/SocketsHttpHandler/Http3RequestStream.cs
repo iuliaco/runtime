@@ -146,7 +146,6 @@ namespace System.Net.Http
                 if (_request.IsWebTransportH3Request)
                 {
                     webtransportSession = new Http3WebtransportSession(quicStream, _connection.WebtransportManager!);
-                    _connection.WebtransportManager!.AddSession(quicStream, webtransportSession);
                 }
                 BufferHeaders(_request);
 
