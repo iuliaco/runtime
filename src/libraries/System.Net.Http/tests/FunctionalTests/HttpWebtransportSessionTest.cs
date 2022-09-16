@@ -589,6 +589,48 @@ namespace System.Net.Http.Functional.Tests
             await new[] { clientTask, serverTask }.WhenAllOrAnyFailed(20_000);
         }
 
+
+
+        [Fact]
+        public async Task WebtransportNoStreamsReceivedFromServerCancelOperation()
+        {
+            using Http3LoopbackServer server = CreateHttp3LoopbackServer();
+
+            Task serverTask = Task.Run(async () =>
+            {
+                ICollection<(long settingId, long settingValue)> settings = new LinkedList<(long settingId, long settingValue)>();
+                settings.Add((Http3LoopbackStream.EnableWebTransport, 1));
+                await using Http3LoopbackConnection connection = (Http3LoopbackConnection)await server.EstablishGenericConnectionAsync(settings);
+                var headers = new List<HttpHeaderData>();
+                int contentLength = 10;
+                HttpHeaderData header = new HttpHeaderData("sec-webtransport-http3-draft", "draft02");
+                headers.Add(new HttpHeaderData("Content-Length", contentLength.ToString(CultureInfo.InvariantCulture)));
+                headers.Add(header);
+                headers.Add(header);
+
+                Http3LoopbackStream stream = await connection.AcceptRequestStreamAsync();
+
+                await using (stream)
+                {
+                    Assert.True(connection.EnableWebtransport);
+                    await stream.ReadRequestDataAsync(false);
+                    await stream.SendResponseAsync(HttpStatusCode.OK, headers, "", false);
+
+                }
+            });
+
+            Task clientTask = Task.Run(async () =>
+            {
+                using HttpClient client = CreateHttpClient();
+                CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+                cancellationTokenSource.CancelAfter(5000);
+                Http3WebtransportSession session = await Http3WebtransportSession.ConnectAsync(server.Address, client, CancellationToken.None);
+                Assert.Null(await session.GetIncomingWebtransportStreamFromServerAsync(cancellationTokenSource.Token));
+            });
+
+            await new[] { clientTask, serverTask }.WhenAllOrAnyFailed(20_000);
+        }
+
         [Fact]
         public async Task WebTransportAllowMultipleSessionsDifferentTermination()
         {

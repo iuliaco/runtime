@@ -86,7 +86,7 @@ namespace System.Net.Http
             webtransportSession = connectedWebtransSessionContent.webtransportSession;
             if (!response.IsSuccessStatusCode || !response.Headers.Contains(Http3WebtransportSession.VersionHeaderPrefix))
             {
-                await webtransportSession.AbortIncomingSessionWebtransportStreamsAsync((long)Http3ErrorCode.WebtransportBufferedStreamRejected).ConfigureAwait(false);
+                await webtransportSession.AbortIncomingSessionWebtransportStreamsAsync((long)Http3ErrorCode.WebtransportBufferedStreamRejected, cancellationToken).ConfigureAwait(false);
                 await webtransportSession.DisposeAsync().ConfigureAwait(false);
                 throw new HttpRequestException(SR.net_webtransport_server_rejected);
             }
@@ -137,12 +137,12 @@ namespace System.Net.Http
             Debug.Assert(added);
         }
 
-        internal async Task AbortIncomingSessionWebtransportStreamsAsync(long errorCode)
+        internal async Task AbortIncomingSessionWebtransportStreamsAsync(long errorCode, CancellationToken cancellationToken = default)
         {
             // check if they were not aborted before
             if(_incomingStreamsQueue.Writer.TryComplete())
             {
-                Runtime.CompilerServices.ConfiguredCancelableAsyncEnumerable<QuicStream> incomingStreams = _incomingStreamsQueue.Reader.ReadAllAsync().ConfigureAwait(false);
+                Runtime.CompilerServices.ConfiguredCancelableAsyncEnumerable<QuicStream> incomingStreams = _incomingStreamsQueue.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false);
                 await foreach (QuicStream incomingStream in incomingStreams)
                 {
                     incomingStream.Abort(QuicAbortDirection.Read, errorCode);
