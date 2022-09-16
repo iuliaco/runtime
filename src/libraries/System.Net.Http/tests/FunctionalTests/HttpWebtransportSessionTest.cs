@@ -461,7 +461,7 @@ namespace System.Net.Http.Functional.Tests
                 Http3WebtransportSession session = await Http3WebtransportSession.ConnectAsync(server.Address, client, CancellationToken.None);
                 for (int i = 0; i < 20; i++)
                 {
-                    QuicStream help = await session.GetIncomingWTStreamFromServerAsync();
+                    QuicStream help = await session.GetIncomingWebtransportStreamFromServerAsync();
                     byte[] recvBytes = new byte[20];
                     recvBytes = Encoding.ASCII.GetBytes(s + i);
                     await help.WriteAsync(recvBytes, true, CancellationToken.None).ConfigureAwait(false);
@@ -526,7 +526,7 @@ namespace System.Net.Http.Functional.Tests
                 for (int i = 0; i < 10; i++)
                 {
 
-                    QuicStream help = await session.GetIncomingWTStreamFromServerAsync();
+                    QuicStream help = await session.GetIncomingWebtransportStreamFromServerAsync();
                     byte[] recvBytes = new byte[20];
                     int bytesRead = await help.ReadAsync(recvBytes, CancellationToken.None).ConfigureAwait(false);
                     while (bytesRead != 0)
@@ -578,7 +578,7 @@ namespace System.Net.Http.Functional.Tests
             {
                 using HttpClient client = CreateHttpClient();
                 Http3WebtransportSession session = await Http3WebtransportSession.ConnectAsync(server.Address, client, CancellationToken.None);
-                QuicStream help = await session.GetIncomingWTStreamFromServerAsync();
+                QuicStream help = await session.GetIncomingWebtransportStreamFromServerAsync();
                 byte[] recvBytes = new byte[20];
                 recvBytes = Encoding.ASCII.GetBytes(s);
                 await Assert.ThrowsAsync<InvalidOperationException>(async () => await help.WriteAsync(recvBytes, true, CancellationToken.None).ConfigureAwait(false));

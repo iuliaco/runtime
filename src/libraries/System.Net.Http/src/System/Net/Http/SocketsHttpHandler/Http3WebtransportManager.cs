@@ -57,13 +57,13 @@ namespace System.Net.Http
 
         public async ValueTask<QuicStream?> CreateClientStream(QuicStreamType type, long sessionId)
         {
-            QuicStream clientWTStream;
+            QuicStream clientWebtransportStream;
             try
             {
-                clientWTStream = await _connection.OpenOutboundStreamAsync(type).ConfigureAwait(false);
-                await clientWTStream.WriteAsync(BuildWebtransportStreamClientFrame(type, sessionId), default).ConfigureAwait(false);
+                clientWebtransportStream = await _connection.OpenOutboundStreamAsync(type).ConfigureAwait(false);
+                await clientWebtransportStream.WriteAsync(BuildWebtransportStreamClientFrame(type, sessionId), default).ConfigureAwait(false);
 
-                return clientWTStream;
+                return clientWebtransportStream;
             }
             catch (Exception ex)
             {

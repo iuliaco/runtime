@@ -97,7 +97,7 @@ namespace System.Net.Http
         /// <summary>
         /// Takes the next incoming <see cref="QuicStream">quic stream from the server</see>.
         /// </summary>
-        public async ValueTask<QuicStream?> GetIncomingWTStreamFromServerAsync()
+        public async ValueTask<QuicStream?> GetIncomingWebtransportStreamFromServerAsync()
         {
             if (_disposed == 1)
                 throw new ObjectDisposedException(nameof(Http3WebtransportSession));
@@ -113,7 +113,7 @@ namespace System.Net.Http
             }
         }
 
-        public bool TryGetIncomingWTStreamFromServer(out QuicStream? quicStream)
+        public bool TryGetIncomingWebtransportStreamFromServer(out QuicStream? quicStream)
         {
             return _disposed == 1
                 ? throw new ObjectDisposedException(nameof(Http3WebtransportSession))
