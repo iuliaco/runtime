@@ -86,7 +86,7 @@ namespace System.Net.Http
             webtransportSession = connectedWebtransSessionContent.webtransportSession;
             if (!response.IsSuccessStatusCode || !response.Headers.Contains(Http3WebtransportSession.VersionHeaderPrefix))
             {
-                await webtransportSession.AbortIncomingSessionWebtransportStreams((long)Http3ErrorCode.WebtransportBufferedStreamRejected).ConfigureAwait(false);
+                await webtransportSession.AbortIncomingSessionWebtransportStreamsAsync((long)Http3ErrorCode.WebtransportBufferedStreamRejected).ConfigureAwait(false);
                 await webtransportSession.DisposeAsync().ConfigureAwait(false);
                 throw new HttpRequestException(SR.net_webtransport_server_rejected);
             }
@@ -97,17 +97,21 @@ namespace System.Net.Http
         /// <summary>
         /// Takes the next incoming <see cref="QuicStream">quic stream from the server</see>.
         /// </summary>
-        public async ValueTask<QuicStream?> GetIncomingWebtransportStreamFromServerAsync()
+        public async ValueTask<QuicStream?> GetIncomingWebtransportStreamFromServerAsync(CancellationToken cancellationToken = default)
         {
             if (_disposed == 1)
                 throw new ObjectDisposedException(nameof(Http3WebtransportSession));
             try
             {
-                QuicStream quicStream = await _incomingStreamsQueue.Reader.ReadAsync().ConfigureAwait(false);
+                QuicStream quicStream = await _incomingStreamsQueue.Reader.ReadAsync(cancellationToken).ConfigureAwait(false);
                 return quicStream;
 
             }
             catch (ChannelClosedException)
+            {
+                return null;
+            }
+            catch (OperationCanceledException)
             {
                 return null;
             }
@@ -133,7 +137,7 @@ namespace System.Net.Http
             Debug.Assert(added);
         }
 
-        internal async Task AbortIncomingSessionWebtransportStreams(long errorCode)
+        internal async Task AbortIncomingSessionWebtransportStreamsAsync(long errorCode)
         {
             // check if they were not aborted before
             if(_incomingStreamsQueue.Writer.TryComplete())
@@ -165,7 +169,7 @@ namespace System.Net.Http
             if (Interlocked.Exchange(ref _disposed, 1) == 1)
                 return;
             RemoveFromSessionsDictionary();
-            await AbortIncomingSessionWebtransportStreams((long)0x107d7b68).ConfigureAwait(false);
+            await AbortIncomingSessionWebtransportStreamsAsync((long)0x107d7b68).ConfigureAwait(false);
             await _connectStream.DisposeAsync().ConfigureAwait(false);
         }
 

@@ -512,7 +512,7 @@ namespace System.Net.Http.Functional.Tests
                         var wtServerUnidirectionalStream = await connection.OpenWebtransportStreamAsync(QuicStreamType.Unidirectional);
                         await SendWebtransportStreamHeaderAsync(wtServerUnidirectionalStream, Http3LoopbackStream.UnidirectionalWebtransportStream, stream.StreamId);
                         byte[] recvBytes = new byte[20];
-                        recvBytes = Encoding.ASCII.GetBytes(s + i);
+                        recvBytes = Encoding.ASCII.GetBytes(s);
                         await wtServerUnidirectionalStream.WriteAsync(recvBytes, true).ConfigureAwait(false);
                     }
                 }
@@ -531,7 +531,7 @@ namespace System.Net.Http.Functional.Tests
                     int bytesRead = await help.ReadAsync(recvBytes, CancellationToken.None).ConfigureAwait(false);
                     while (bytesRead != 0)
                     {
-                        Assert.Equal((s + i).Substring(0, bytesRead), Encoding.ASCII.GetString(recvBytes).Substring(0, bytesRead));
+                        Assert.Equal((s).Substring(0, bytesRead), Encoding.ASCII.GetString(recvBytes).Substring(0, bytesRead));
                         recvBytes = new byte[20];
                         bytesRead = await help.ReadAsync(recvBytes, CancellationToken.None).ConfigureAwait(false);
                     }
