@@ -518,8 +518,10 @@ namespace System.Net.Http
                 bool foundStreamType = VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan, out long streamType, out bytesRead);
                 while (foundStreamType is false)
                 {
-                    foundStreamType = VariableLengthIntegerHelper.TryRead(buffer.AvailableSpan, out streamType, out bytesRead);
-
+                    buffer.EnsureAvailableSpace(VariableLengthIntegerHelper.MaximumEncodedLength);
+                    bytesRead = await stream.ReadAsync(buffer.AvailableMemory, CancellationToken.None).ConfigureAwait(false);
+                    buffer.Commit(bytesRead);
+                    foundStreamType = VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan, out streamType, out bytesRead);
                 }
                 switch (streamType)
                 {
@@ -588,23 +590,7 @@ namespace System.Net.Http
                         if (NetEventSource.Log.IsEnabled())
                         {
                             // Read the rest of the integer, which might be more than 1 byte, so we can log it.
-
-                            long unknownStreamType;
-                            while (!VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan, out unknownStreamType, out _))
-                            {
-                                buffer.EnsureAvailableSpace(VariableLengthIntegerHelper.MaximumEncodedLength);
-                                bytesRead = await stream.ReadAsync(buffer.AvailableMemory, CancellationToken.None).ConfigureAwait(false);
-
-                                if (bytesRead == 0)
-                                {
-                                    unknownStreamType = -1;
-                                    break;
-                                }
-
-                                buffer.Commit(bytesRead);
-                            }
-
-                            NetEventSource.Info(this, $"Ignoring server-initiated stream of unknown type {unknownStreamType}.");
+                            NetEventSource.Info(this, $"Ignoring server-initiated stream of unknown type {streamType}.");
                         }
 
                         stream.Abort(QuicAbortDirection.Read, (long)Http3ErrorCode.StreamCreationError);

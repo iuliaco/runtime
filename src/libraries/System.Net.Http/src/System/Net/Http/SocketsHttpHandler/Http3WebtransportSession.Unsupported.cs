@@ -23,7 +23,7 @@ namespace System.Net.Http
         public bool TryGetIncomingWebtransportStreamFromServer(out System.Net.Quic.QuicStream? quicStream) => throw new PlatformNotSupportedException();
         public ValueTask DisposeAsync() => throw new PlatformNotSupportedException();
         public static ValueTask<Http3WebtransportSession?> ConnectAsync(Uri uri, HttpMessageInvoker? invoker, CancellationToken cancellationToken) => throw new PlatformNotSupportedException();
-        public ValueTask<QuicStream?> OpenWebtransportStreamAsync(QuicStreamType type) => throw new PlatformNotSupportedException();
+        public ValueTask<QuicStream?> OpenWebtransportStreamAsync(QuicStreamType type, CancellationToken cancellationToken = default) => throw new PlatformNotSupportedException();
         public void Dispose() => throw new PlatformNotSupportedException();
 
     }

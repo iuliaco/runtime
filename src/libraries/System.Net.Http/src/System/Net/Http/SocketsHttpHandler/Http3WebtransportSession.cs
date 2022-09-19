@@ -157,7 +157,7 @@ namespace System.Net.Http
         {
             if (_disposed == 1)
                 throw new ObjectDisposedException(nameof(Http3WebtransportSession));
-            return await _WebtransportManager.CreateClientStreamAsync(type, Id).ConfigureAwait(false);
+            return await _WebtransportManager.CreateClientStreamAsync(type, Id, cancellationToken).ConfigureAwait(false);
         }
         private void RemoveFromSessionsDictionary()
         {

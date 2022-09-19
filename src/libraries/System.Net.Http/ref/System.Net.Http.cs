@@ -313,7 +313,7 @@ namespace System.Net.Http
         public static System.Threading.Tasks.ValueTask<Http3WebtransportSession?> ConnectAsync(Uri uri, HttpMessageInvoker? invoker, System.Threading.CancellationToken cancellationToken) { throw null; }
         public bool TryGetIncomingWebtransportStreamFromServer(out System.Net.Quic.QuicStream? quicStream) { throw null; }
         public System.Threading.Tasks.ValueTask<System.Net.Quic.QuicStream?> GetIncomingWebtransportStreamFromServerAsync(CancellationToken cancellationToken = default) { throw null; }
-        public System.Threading.Tasks.ValueTask<System.Net.Quic.QuicStream?> OpenWebtransportStreamAsync(System.Net.Quic.QuicStreamType type) { throw null; }
+        public System.Threading.Tasks.ValueTask<System.Net.Quic.QuicStream?> OpenWebtransportStreamAsync(System.Net.Quic.QuicStreamType type, CancellationToken cancellationToken = default) { throw null; }
         public System.Threading.Tasks.ValueTask DisposeAsync() { throw null; }
         public void Dispose() { throw null; }
     }
