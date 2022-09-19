@@ -74,12 +74,9 @@ namespace System.Net.Http
         private byte[] BuildWebtransportStreamClientFrame(QuicStreamType type, long sessionId)
         {
             Span<byte> buffer = stackalloc byte[2 + VariableLengthIntegerHelper.MaximumEncodedLength];
-            int webtransportLength;
-            if (type == QuicStreamType.Unidirectional)
-                webtransportLength = VariableLengthIntegerHelper.WriteInteger(buffer.Slice(0), (long)Http3StreamType.WebTransportUnidirectional);
-            else
-                webtransportLength = VariableLengthIntegerHelper.WriteInteger(buffer.Slice(0), (long)Http3StreamType.WebTransportBidirectional);
-            int webtransportSessionLength = VariableLengthIntegerHelper.WriteInteger(buffer.Slice(2), (long)sessionId);
+            long streamType = type == QuicStreamType.Unidirectional ? (long)Http3StreamType.WebTransportUnidirectional : (long)Http3StreamType.WebTransportBidirectional;
+            int webtransportLength = VariableLengthIntegerHelper.WriteInteger(buffer.Slice(0), streamType);
+            int webtransportSessionLength = VariableLengthIntegerHelper.WriteInteger(buffer.Slice(webtransportLength), sessionId);
             int payloadLength = webtransportLength + webtransportSessionLength; // includes the webtransport stream and the session id
             Debug.Assert(payloadLength <= VariableLengthIntegerHelper.OneByteLimit);
 

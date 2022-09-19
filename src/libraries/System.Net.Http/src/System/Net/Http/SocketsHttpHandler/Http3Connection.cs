@@ -775,7 +775,7 @@ namespace System.Net.Http
                             {
                                 throw HttpProtocolException.CreateHttp3ConnectionException(Http3ErrorCode.SettingsError);
                             }
-                            _enableWebTransport = Convert.ToBoolean(settingValue);
+                            _enableWebTransport = settingValue == 1;
                             break;
                         case Http3SettingType.ReservedHttp2EnablePush:
                         case Http3SettingType.ReservedHttp2MaxConcurrentStreams:

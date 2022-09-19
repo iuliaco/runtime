@@ -156,7 +156,7 @@ namespace System.Net.Test.Common
 
                 Assert.Equal(Http3LoopbackStream.MaxHeaderListSize, settingId);
                 MaxHeaderListSize = settingValue;
-                EnableWebtransport = Convert.ToBoolean(webtransportValue);
+                EnableWebtransport = webtransportValue == 1;
 
                 _inboundControlStream = controlStream;
             }

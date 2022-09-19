@@ -31,7 +31,7 @@ namespace System.Net.Http
         private TaskCompletionSource<bool>? _expect100ContinueCompletionSource; // True indicates we should send content (e.g. received 100 Continue).
         private bool _disposed;
         private CancellationTokenSource _requestBodyCancellationSource;
-      //  internal bool isWebtransportSessionStream;
+        private bool isWebtransportSessionStream;
 
         // Allocated when we receive a :status header.
         private HttpResponseMessage? _response;
@@ -83,6 +83,7 @@ namespace System.Net.Http
 
             _requestSendCompleted = _request.Content == null;
             _responseRecvCompleted = false;
+            isWebtransportSessionStream = _request.IsWebTransportH3Request;
         }
 
         public void Dispose()
@@ -143,7 +144,7 @@ namespace System.Net.Http
             try
             {
                 Http3WebtransportSession? webtransportSession = null;
-                if (_request.IsWebTransportH3Request)
+                if (isWebtransportSessionStream)
                 {
                     webtransportSession = new Http3WebtransportSession(quicStream, _connection.WebtransportManager!);
                 }
@@ -163,7 +164,7 @@ namespace System.Net.Http
 
                     // End the stream writing if there's no content to send, do it as part of the write so that the FIN flag isn't send in an empty QUIC frame.
                     // Note that there's no need to call Shutdown separately since the FIN flag in the last write is the same thing.
-                    await FlushSendBufferAsync(endStream: _request.Content == null && !_request.IsWebTransportH3Request, _requestBodyCancellationSource.Token).ConfigureAwait(false);
+                    await FlushSendBufferAsync(endStream: _request.Content == null && !isWebtransportSessionStream, _requestBodyCancellationSource.Token).ConfigureAwait(false);
                 }
 
                 Task sendContentTask;
@@ -221,7 +222,7 @@ namespace System.Net.Http
                 // we can close our Http3RequestStream immediately and return a singleton empty content stream. Otherwise, we
                 // need to return a Http3ReadStream which will be responsible for disposing the Http3RequestStream.
                 bool useEmptyResponseContent = responseContent.Headers.ContentLength == 0 && sendContentObserved;
-                if(_request.IsWebTransportH3Request)
+                if(isWebtransportSessionStream)
                 {
                     _response.Content = new WebtransportHttpContent(session: webtransportSession!);
                 }
@@ -249,7 +250,7 @@ namespace System.Net.Http
                 _response = null;
 
                 // If we're 100% done with the stream, dispose.
-                disposeSelf = useEmptyResponseContent && !_request.IsWebTransportH3Request;
+                disposeSelf = useEmptyResponseContent && !isWebtransportSessionStream;
 
                 // Success, don't cancel the body.
                 shouldCancelBody = false;
@@ -1326,12 +1327,6 @@ namespace System.Net.Http
 
         private void AbortStream()
         {
-            /*if(isWebtransportSessionStream)
-            {
-                bool found = _connection.WebtransportManager!.FindSession(StreamId, out Http3WebtransportSession? session);
-                if(found)
-                    session!.Dispose();
-            }*/
             // If the request body isn't completed, cancel it now.
             if (_requestContentLengthRemaining != 0) // 0 is used for the end of content writing, -1 is used for unknown Content-Length
             {

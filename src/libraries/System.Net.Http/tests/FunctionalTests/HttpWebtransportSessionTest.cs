@@ -679,5 +679,45 @@ namespace System.Net.Http.Functional.Tests
 
             await new[] { clientTask, serverTask }.WhenAllOrAnyFailed(20_000);
         }
+        [Fact]
+        public async Task WebTransportSessionMultipleDispose()
+        {
+            using Http3LoopbackServer server = CreateHttp3LoopbackServer();
+            SemaphoreSlim semaphore = new SemaphoreSlim(0);
+
+            Task serverTask = Task.Run(async () =>
+            {
+                ICollection<(long settingId, long settingValue)> settings = new LinkedList<(long settingId, long settingValue)>();
+                settings.Add((Http3LoopbackStream.EnableWebTransport, 1));
+                var headers = new List<HttpHeaderData>();
+                int contentLength = 10;
+                HttpHeaderData header = new HttpHeaderData("sec-webtransport-http3-draft", "draft02");
+                headers.Add(new HttpHeaderData("Content-Length", contentLength.ToString(CultureInfo.InvariantCulture)));
+                headers.Add(header);
+
+                await using Http3LoopbackConnection connection = (Http3LoopbackConnection)await server.EstablishGenericConnectionAsync(settings);
+                Http3LoopbackStream stream = await connection.AcceptRequestStreamAsync();
+                await stream.ReadRequestDataAsync(false);
+                await stream.SendResponseAsync(HttpStatusCode.OK, headers, "", false);
+                stream = await connection.AcceptRequestStreamAsync();
+                await Task.Delay(1000);
+                await connection.CloseAsync(10000);
+
+                await semaphore.WaitAsync();
+            });
+
+            Task clientTask = Task.Run(async () =>
+            {
+                using HttpClient client = CreateHttpClient();
+                Http3WebtransportSession session1 = await Http3WebtransportSession.ConnectAsync(server.Address, client, CancellationToken.None);
+
+                Http3WebtransportSession session2 = await Http3WebtransportSession.ConnectAsync(server.Address, client, CancellationToken.None);
+
+                semaphore.Release();
+
+            });
+
+            await new[] { clientTask, serverTask }.WhenAllOrAnyFailed(20_000);
+        }
     }
 }
