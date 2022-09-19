@@ -90,27 +90,28 @@ namespace System.Net.Http
 
         public async ValueTask DisposeAsync()
         {
-            List<long> toRemove = new List<long>();
+            List<Http3WebtransportSession> toRemove = new List<Http3WebtransportSession>();
             foreach (KeyValuePair<long, Http3WebtransportSession> pair in _sessions)
             {
-               toRemove.Add(pair.Key);
+               toRemove.Add(pair.Value);
             }
-
-            foreach (long id in toRemove)
+            _sessions.Clear();
+            foreach (Http3WebtransportSession session in toRemove)
             {
-                await _sessions[id].DisposeAsync().ConfigureAwait(false);
+                await session.DisposeAsync().ConfigureAwait(false);
             }
         }
         public void Dispose()
         {
-            List<long> toRemove = new List<long>();
+            List<Http3WebtransportSession> toRemove = new List<Http3WebtransportSession>();
             foreach (KeyValuePair<long, Http3WebtransportSession> pair in _sessions)
             {
-                toRemove.Add(pair.Key);
+                toRemove.Add(pair.Value);
             }
-            foreach (long id in toRemove)
+            _sessions.Clear();
+            foreach (Http3WebtransportSession session in toRemove)
             {
-                _sessions[id].Dispose();
+                session.Dispose();
             }
         }
     }
