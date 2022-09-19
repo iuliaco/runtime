@@ -153,11 +153,11 @@ namespace System.Net.Http
         /// <summary>
         /// Creates a new <see cref="QuicStream">quic stream and sends it to the server</see>.
         /// </summary>
-        public async ValueTask<QuicStream?> OpenWebtransportStreamAsync(QuicStreamType type)
+        public async ValueTask<QuicStream?> OpenWebtransportStreamAsync(QuicStreamType type, CancellationToken cancellationToken = default)
         {
             if (_disposed == 1)
                 throw new ObjectDisposedException(nameof(Http3WebtransportSession));
-            return await _WebtransportManager.CreateClientStream(type, Id).ConfigureAwait(false);
+            return await _WebtransportManager.CreateClientStreamAsync(type, Id).ConfigureAwait(false);
         }
         private void RemoveFromSessionsDictionary()
         {

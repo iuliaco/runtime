@@ -55,13 +55,13 @@ namespace System.Net.Http
             session.AcceptServerStream(stream);
         }
 
-        public async ValueTask<QuicStream?> CreateClientStream(QuicStreamType type, long sessionId)
+        public async ValueTask<QuicStream?> CreateClientStreamAsync(QuicStreamType type, long sessionId, CancellationToken cancellationToken = default)
         {
             QuicStream clientWebtransportStream;
             try
             {
-                clientWebtransportStream = await _connection.OpenOutboundStreamAsync(type).ConfigureAwait(false);
-                await clientWebtransportStream.WriteAsync(BuildWebtransportStreamClientFrame(type, sessionId), default).ConfigureAwait(false);
+                clientWebtransportStream = await _connection.OpenOutboundStreamAsync(type, cancellationToken).ConfigureAwait(false);
+                await clientWebtransportStream.WriteAsync(BuildWebtransportStreamClientFrame(type, sessionId), cancellationToken).ConfigureAwait(false);
 
                 return clientWebtransportStream;
             }
