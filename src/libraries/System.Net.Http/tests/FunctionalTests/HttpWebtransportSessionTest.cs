@@ -254,12 +254,12 @@ namespace System.Net.Http.Functional.Tests
 
                     var wtServerBidirectionalStream = await connection.OpenWebtransportStreamAsync(QuicStreamType.Bidirectional);
                     await SendWebtransportStreamHeaderAsync(wtServerBidirectionalStream, Http3LoopbackStream.BidirectionalWebtransportStream, stream.StreamId + 1);
-                    // Delay needed so quic will not unify the header and the body of the wt stream
-                    await Task.Delay(500);
 
                     byte[] recvBytes = new byte[18];
                     string s = "Hellp world";
                     recvBytes = Encoding.ASCII.GetBytes(s);
+                    await semaphore.WaitAsync();
+
                     QuicException ex = await Assert.ThrowsAsync<QuicException>(async () => await wtServerBidirectionalStream.WriteAsync(recvBytes, true).ConfigureAwait(false));
                     Assert.Equal(966049156, ex.ApplicationErrorCode);
                     semaphore.Release();
@@ -271,6 +271,8 @@ namespace System.Net.Http.Functional.Tests
             {
                 using HttpClient client = CreateHttpClient();
                 Http3WebtransportSession session = await Http3WebtransportSession.ConnectAsync(server.Address, client, CancellationToken.None);
+                await session.DisposeAsync();
+                semaphore.Release();
                 await semaphore.WaitAsync();
 
             });
@@ -310,13 +312,10 @@ namespace System.Net.Http.Functional.Tests
                         byte[] recvBytes = new byte[20];
 
                         int bytesRead = await clientStream.ReadAsync(recvBytes, CancellationToken.None).ConfigureAwait(false);
-                        while (bytesRead != 0)
-                        {
-                            Assert.Equal((s + i).Substring(0, bytesRead), Encoding.ASCII.GetString(recvBytes).Substring(0, bytesRead));
-                            recvBytes = new byte[20];
-                            bytesRead = await clientStream.ReadAsync(recvBytes, CancellationToken.None).ConfigureAwait(false);
 
-                        }
+                        Assert.Equal((s + i).Substring(0, bytesRead), Encoding.ASCII.GetString(recvBytes).Substring(0, bytesRead));
+                        recvBytes = new byte[20];
+
                         recvBytes = Encoding.ASCII.GetBytes(s + i);
                         await clientStream.WriteAsync(recvBytes, true).ConfigureAwait(false);
                     }
@@ -335,12 +334,7 @@ namespace System.Net.Http.Functional.Tests
                     await wtClientBidirectionalStream.WriteAsync(recvBytes, true);
                     recvBytes = new byte[20];
                     int bytesRead = await wtClientBidirectionalStream.ReadAsync(recvBytes, CancellationToken.None).ConfigureAwait(false);
-                    while (bytesRead != 0)
-                    {
-                        Assert.Equal((s + i).Substring(0, bytesRead), Encoding.ASCII.GetString(recvBytes).Substring(0, bytesRead));
-                        recvBytes = new byte[20];
-                        bytesRead = await wtClientBidirectionalStream.ReadAsync(recvBytes, CancellationToken.None).ConfigureAwait(false);
-                    }
+                    Assert.Equal((s + i).Substring(0, bytesRead), Encoding.ASCII.GetString(recvBytes).Substring(0, bytesRead));
                     await wtClientBidirectionalStream.DisposeAsync();
                 }
             });
@@ -381,13 +375,7 @@ namespace System.Net.Http.Functional.Tests
                         Assert.Equal(stream.StreamId, sessionId);
                         byte[] recvBytes = new byte[20];
                         int bytesRead = await clientStream.ReadAsync(recvBytes, CancellationToken.None).ConfigureAwait(false);
-                        while (bytesRead != 0)
-                        {
-                            Assert.Equal((s + i).Substring(0, bytesRead), Encoding.ASCII.GetString(recvBytes).Substring(0, bytesRead));
-                            recvBytes = new byte[20];
-                            bytesRead = await clientStream.ReadAsync(recvBytes, CancellationToken.None).ConfigureAwait(false);
-
-                        }
+                        Assert.Equal((s + i).Substring(0, bytesRead), Encoding.ASCII.GetString(recvBytes).Substring(0, bytesRead));
                     }
                 }
             });
@@ -444,12 +432,8 @@ namespace System.Net.Http.Functional.Tests
                         byte[] recvBytes = new byte[18];
                         int bytesRead = 0;
                         bytesRead = await wtServerBidirectionalStream.ReadAsync(recvBytes, CancellationToken.None).ConfigureAwait(false);
-                        while (bytesRead != 0)
-                        {
-                            Assert.Equal((s + i).Substring(0, bytesRead), Encoding.ASCII.GetString(recvBytes).Substring(0, bytesRead));
-                            bytesRead = await wtServerBidirectionalStream.ReadAsync(recvBytes, CancellationToken.None).ConfigureAwait(false);
-
-                        }
+                        Assert.Equal((s + i).Substring(0, bytesRead), Encoding.ASCII.GetString(recvBytes).Substring(0, bytesRead));
+                        bytesRead = await wtServerBidirectionalStream.ReadAsync(recvBytes, CancellationToken.None).ConfigureAwait(false);
                         recvBytes = Encoding.ASCII.GetBytes(s + i);
                         await wtServerBidirectionalStream.WriteAsync(recvBytes, true).ConfigureAwait(false);
 
@@ -470,12 +454,7 @@ namespace System.Net.Http.Functional.Tests
                     await help.WriteAsync(recvBytes, true, CancellationToken.None).ConfigureAwait(false);
                     recvBytes = new byte[20];
                     int bytesRead = await help.ReadAsync(recvBytes, CancellationToken.None).ConfigureAwait(false);
-                    while (bytesRead != 0)
-                    {
-                        Assert.Equal((s + i).Substring(0, bytesRead), Encoding.ASCII.GetString(recvBytes).Substring(0, bytesRead));
-                        recvBytes = new byte[20];
-                        bytesRead = await help.ReadAsync(recvBytes, CancellationToken.None).ConfigureAwait(false);
-                    }
+                    Assert.Equal((s + i).Substring(0, bytesRead), Encoding.ASCII.GetString(recvBytes).Substring(0, bytesRead));
 
                     await help.DisposeAsync();
                 }
@@ -532,12 +511,7 @@ namespace System.Net.Http.Functional.Tests
                     QuicStream help = await session.GetIncomingWebtransportStreamFromServerAsync();
                     byte[] recvBytes = new byte[20];
                     int bytesRead = await help.ReadAsync(recvBytes, CancellationToken.None).ConfigureAwait(false);
-                    while (bytesRead != 0)
-                    {
-                        Assert.Equal((s).Substring(0, bytesRead), Encoding.ASCII.GetString(recvBytes).Substring(0, bytesRead));
-                        recvBytes = new byte[20];
-                        bytesRead = await help.ReadAsync(recvBytes, CancellationToken.None).ConfigureAwait(false);
-                    }
+                    Assert.Equal((s).Substring(0, bytesRead), Encoding.ASCII.GetString(recvBytes).Substring(0, bytesRead));
                     await help.DisposeAsync();
                 }
             });
