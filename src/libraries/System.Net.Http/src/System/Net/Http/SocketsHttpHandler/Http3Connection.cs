@@ -495,9 +495,7 @@ namespace System.Net.Http
                 {
                     // webtransport has a header of 3 bytes and in order to avoid reading
                     // user content for webtransport stream we need at first to read 3 bytes
-                    byte[] header = new byte[3];
-                    bytesRead = await stream.ReadAsync(header, CancellationToken.None).ConfigureAwait(false);
-                    header.CopyTo(buffer.AvailableMemory);
+                    bytesRead = await stream.ReadAsync(buffer.AvailableMemorySliced(3), CancellationToken.None).ConfigureAwait(false);
                 }
                 catch (QuicException ex) when (ex.QuicError == QuicError.StreamAborted)
                 {

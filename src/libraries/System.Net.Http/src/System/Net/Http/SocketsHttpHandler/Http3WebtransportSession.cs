@@ -25,7 +25,6 @@ namespace System.Net.Http
     public class Http3WebtransportSession : IAsyncDisposable, IDisposable
     {
         private readonly QuicStream _connectStream;
-        private static HttpMessageInvoker? s_defaultInvoker;
 
         public long Id
         {
@@ -68,14 +67,8 @@ namespace System.Net.Http
         /// <summary>
         /// Creates a webtransport session by creating a webtransport connect request, sending it to <see cref="Uri">uri</see>.
         /// </summary>
-        public static async ValueTask<Http3WebtransportSession?> ConnectAsync(Uri uri, HttpMessageInvoker? invoker, CancellationToken cancellationToken)
+        public static async ValueTask<Http3WebtransportSession?> ConnectAsync(Uri uri, HttpMessageInvoker invoker, CancellationToken cancellationToken)
         {
-            if (invoker is null)
-            {
-                s_defaultInvoker ??= new HttpMessageInvoker(new HttpClientHandler());
-                invoker = s_defaultInvoker;
-            }
-
             Http3WebtransportSession? webtransportSession;
             HttpRequestMessage request;
             request = new HttpRequestMessage(HttpMethod.Connect, uri) { Version = HttpVersion.Version30, VersionPolicy = HttpVersionPolicy.RequestVersionExact };
@@ -169,6 +162,7 @@ namespace System.Net.Http
             if (Interlocked.Exchange(ref _disposed, 1) == 1)
                 return;
             RemoveFromSessionsDictionary();
+
             await AbortIncomingSessionWebtransportStreamsAsync((long)0x107d7b68).ConfigureAwait(false);
             await _connectStream.DisposeAsync().ConfigureAwait(false);
         }
