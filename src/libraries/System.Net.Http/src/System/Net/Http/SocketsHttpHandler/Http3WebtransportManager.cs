@@ -23,6 +23,7 @@ namespace System.Net.Http
     {
         private ConcurrentDictionary<long, Http3WebtransportSession> _sessions;
         private QuicConnection _connection;
+        private int _disposed;
 
         public Http3WebtransportManager(QuicConnection connection)
         {
@@ -30,21 +31,37 @@ namespace System.Net.Http
             _connection = connection;
         }
 
-        public bool AddSession(QuicStream connectStream, Http3WebtransportSession webtransportSession)
+        public void AddSession(QuicStream connectStream, Http3WebtransportSession webtransportSession)
         {
-            bool ans = _sessions.TryAdd(connectStream.Id, webtransportSession);
-            return ans;
+            if (_disposed == 1)
+            {
+                throw new ObjectDisposedException(nameof(Http3WebtransportManager));
+            }
+            lock (_sessions)
+            {
+                bool ans = _sessions.TryAdd(connectStream.Id, webtransportSession);
+                Debug.Assert(ans);
+            }
         }
 
         public bool FindSession(long streamId, out Http3WebtransportSession? session)
         {
+            if (_disposed == 1)
+            {
+                throw new ObjectDisposedException(nameof(Http3WebtransportManager));
+            }
+
             return _sessions.TryGetValue(streamId, out session);
         }
 
         public void AcceptServerStream(QuicStream stream, long sessionId)
         {
-            Http3WebtransportSession? session;
-            _sessions.TryGetValue(sessionId, out session);
+            if (_disposed == 1)
+            {
+                throw new ObjectDisposedException(nameof(Http3WebtransportManager));
+            }
+
+            _sessions.TryGetValue(sessionId, out Http3WebtransportSession? session);
             // if no session with that id exists throw exception
             // https://datatracker.ietf.org/doc/html/draft-ietf-webtrans-http3#section-4
             if (session == null)
@@ -57,6 +74,11 @@ namespace System.Net.Http
 
         public async ValueTask<QuicStream?> CreateClientStreamAsync(QuicStreamType type, long sessionId, CancellationToken cancellationToken = default)
         {
+            if (_disposed == 1)
+            {
+                throw new ObjectDisposedException(nameof(Http3WebtransportManager));
+            }
+
             QuicStream clientWebtransportStream;
             try
             {
@@ -85,33 +107,49 @@ namespace System.Net.Http
 
         public void DeleteSession(long id)
         {
+            if (_disposed == 1)
+            {
+                throw new ObjectDisposedException(nameof(Http3WebtransportManager));
+            }
+
             _sessions.TryRemove(id, out _);
         }
 
         public async ValueTask DisposeAsync()
         {
+            if (Interlocked.Exchange(ref _disposed, 1) == 1)
+                return;
             List<Http3WebtransportSession> toRemove = new List<Http3WebtransportSession>();
-            foreach (KeyValuePair<long, Http3WebtransportSession> pair in _sessions)
+            lock (_sessions)
             {
-               toRemove.Add(pair.Value);
+                foreach (KeyValuePair<long, Http3WebtransportSession> pair in _sessions)
+                {
+                    toRemove.Add(pair.Value);
+                }
+                _sessions.Clear();
             }
-            _sessions.Clear();
             foreach (Http3WebtransportSession session in toRemove)
             {
                 await session.DisposeAsync().ConfigureAwait(false);
             }
+
         }
         public void Dispose()
         {
-            List<Http3WebtransportSession> toRemove = new List<Http3WebtransportSession>();
-            foreach (KeyValuePair<long, Http3WebtransportSession> pair in _sessions)
+            if (Interlocked.Exchange(ref _disposed, 1) == 1)
+                return;
+            lock (_sessions)
             {
-                toRemove.Add(pair.Value);
-            }
-            _sessions.Clear();
-            foreach (Http3WebtransportSession session in toRemove)
-            {
-                session.Dispose();
+                List<Http3WebtransportSession> toRemove = new List<Http3WebtransportSession>();
+                foreach (KeyValuePair<long, Http3WebtransportSession> pair in _sessions)
+                {
+                    toRemove.Add(pair.Value);
+                }
+                _sessions.Clear();
+                foreach (Http3WebtransportSession session in toRemove)
+                {
+                    session.Dispose();
+                }
             }
         }
     }

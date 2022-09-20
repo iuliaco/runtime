@@ -399,7 +399,6 @@ namespace System.Net.Http.Functional.Tests
         [Fact]
         public async Task SendWebtransportBidirectionServerStreamsReadWrite()
         {
-            using HttpClient client = CreateHttpClient();
             using Http3LoopbackServer server = CreateHttp3LoopbackServer();
             string s = "Hello World ";
 
@@ -567,6 +566,8 @@ namespace System.Net.Http.Functional.Tests
         public async Task WebtransportNoStreamsReceivedFromServerCancelOperation()
         {
             using Http3LoopbackServer server = CreateHttp3LoopbackServer();
+            SemaphoreSlim semaphore = new SemaphoreSlim(0);
+
 
             Task serverTask = Task.Run(async () =>
             {
@@ -587,7 +588,7 @@ namespace System.Net.Http.Functional.Tests
                     Assert.True(connection.EnableWebtransport);
                     await stream.ReadRequestDataAsync(false);
                     await stream.SendResponseAsync(HttpStatusCode.OK, headers, "", false);
-
+                    await semaphore.WaitAsync();
                 }
             });
 
@@ -598,6 +599,7 @@ namespace System.Net.Http.Functional.Tests
                 cancellationTokenSource.CancelAfter(5000);
                 Http3WebtransportSession session = await Http3WebtransportSession.ConnectAsync(server.Address, client, CancellationToken.None);
                 Assert.Null(await session.GetIncomingWebtransportStreamFromServerAsync(cancellationTokenSource.Token));
+                semaphore.Release();
             });
 
             await new[] { clientTask, serverTask }.WhenAllOrAnyFailed(20_000);
