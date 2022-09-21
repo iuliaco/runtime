@@ -289,8 +289,6 @@ namespace System.Net.Http
             // Stop sending requests to this connection.
             _pool.InvalidateHttp3Connection(this);
 
-            WebtransportManager?.Dispose();
-
             long connectionResetErrorCode = (abortException as HttpProtocolException)?.ErrorCode ?? (long)Http3ErrorCode.InternalError;
 
             lock (SyncObj)
@@ -416,9 +414,9 @@ namespace System.Net.Http
             // header
             controlStreamSettingsBuilder[0] = (byte)Http3StreamType.Control;
             controlStreamSettingsBuilder[1] = (byte)Http3FrameType.Settings;
-            controlStreamSettingsBuilder[3] = (byte)Http3SettingType.MaxHeaderListSize;
 
             // settings
+            controlStreamSettingsBuilder[3] = (byte)Http3SettingType.MaxHeaderListSize;
             int MaxResponseHeadersByteSize = VariableLengthIntegerHelper.WriteInteger(controlStreamSettingsBuilder.Slice(4), settings.MaxResponseHeadersByteLength);
             int webtransportLength = VariableLengthIntegerHelper.WriteInteger(controlStreamSettingsBuilder.Slice(4 + MaxResponseHeadersByteSize), (long)Http3SettingType.EnableWebTransport);
             controlStreamSettingsBuilder[4 + MaxResponseHeadersByteSize + webtransportLength] = 1;

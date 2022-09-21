@@ -72,7 +72,7 @@ namespace System.Net.Http
             session.AcceptServerStream(stream);
         }
 
-        public async ValueTask<QuicStream?> CreateClientStreamAsync(QuicStreamType type, long sessionId, CancellationToken cancellationToken = default)
+        public async ValueTask<QuicStream> CreateClientStreamAsync(QuicStreamType type, long sessionId, CancellationToken cancellationToken = default)
         {
             if (_disposed == 1)
             {

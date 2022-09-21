@@ -12,7 +12,6 @@
     <ProjectReference Include="..\..\System.Net.Sockets\ref\System.Net.Sockets.csproj" />
     <ProjectReference Include="..\..\System.Net.Security\ref\System.Net.Security.csproj" />
     <ProjectReference Include="..\..\System.Diagnostics.DiagnosticSource\ref\System.Diagnostics.DiagnosticSource.csproj" />
-    <ProjectReference Include="..\..\System.Threading.Channels\ref\System.Threading.Channels.csproj" />
   </ItemGroup>
   <ItemGroup>
   </ItemGroup>

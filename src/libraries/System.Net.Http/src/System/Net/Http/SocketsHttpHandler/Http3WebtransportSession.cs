@@ -67,7 +67,7 @@ namespace System.Net.Http
         /// <summary>
         /// Creates a webtransport session by creating a webtransport connect request, sending it to <see cref="Uri">uri</see>.
         /// </summary>
-        public static async ValueTask<Http3WebtransportSession?> ConnectAsync(Uri uri, HttpMessageInvoker invoker, CancellationToken cancellationToken)
+        public static async ValueTask<Http3WebtransportSession> ConnectAsync(Uri uri, HttpMessageInvoker invoker, CancellationToken cancellationToken)
         {
             Http3WebtransportSession? webtransportSession;
             HttpRequestMessage request;
@@ -90,7 +90,7 @@ namespace System.Net.Http
         /// <summary>
         /// Takes the next incoming <see cref="QuicStream">quic stream from the server</see>.
         /// </summary>
-        public async ValueTask<QuicStream?> GetIncomingWebtransportStreamFromServerAsync(CancellationToken cancellationToken = default)
+        public async ValueTask<QuicStream> GetIncomingWebtransportStreamFromServerAsync(CancellationToken cancellationToken = default)
         {
             if (_disposed == 1)
                 throw new ObjectDisposedException(nameof(Http3WebtransportSession));
@@ -100,13 +100,9 @@ namespace System.Net.Http
                 return quicStream;
 
             }
-            catch (ChannelClosedException)
+            catch (Exception ex) when (ex is ChannelClosedException or OperationCanceledException)
             {
-                return null;
-            }
-            catch (OperationCanceledException)
-            {
-                return null;
+                throw ex;
             }
         }
 
@@ -146,7 +142,7 @@ namespace System.Net.Http
         /// <summary>
         /// Creates a new <see cref="QuicStream">quic stream and sends it to the server</see>.
         /// </summary>
-        public async ValueTask<QuicStream?> OpenWebtransportStreamAsync(QuicStreamType type, CancellationToken cancellationToken = default)
+        public async ValueTask<QuicStream> OpenWebtransportStreamAsync(QuicStreamType type, CancellationToken cancellationToken = default)
         {
             if (_disposed == 1)
                 throw new ObjectDisposedException(nameof(Http3WebtransportSession));
@@ -163,7 +159,7 @@ namespace System.Net.Http
                 return;
             RemoveFromSessionsDictionary();
 
-            await AbortIncomingSessionWebtransportStreamsAsync((long)0x107d7b68).ConfigureAwait(false);
+            await AbortIncomingSessionWebtransportStreamsAsync(0x107d7b68).ConfigureAwait(false);
             await _connectStream.DisposeAsync().ConfigureAwait(false);
         }
 

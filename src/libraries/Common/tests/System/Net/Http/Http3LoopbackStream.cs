@@ -202,17 +202,6 @@ namespace System.Net.Test.Common
             }
         }
 
-        public async Task<int> ReadDataStreamAsync(byte[] payload)
-        {
-            int bytesRead = await _stream.ReadAsync(payload.AsMemory(0)).ConfigureAwait(false);
-            return bytesRead;
-        }
-
-        public async Task SendDataStreamAsync(byte[] payload)
-        {
-            await _stream.WriteAsync(payload.AsMemory(), true);
-        }
-
         public async Task<byte[]> ReadRequestBodyAsync()
         {
             var buffer = new MemoryStream();

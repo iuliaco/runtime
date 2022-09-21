@@ -4,27 +4,15 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Diagnostics.Tracing;
 using System.Globalization;
-using System.IO;
 using System.Linq;
 using System.Net.Quic;
-using System.Net.Security;
-using System.Net.Sockets;
 using System.Net.Test.Common;
-using System.Reflection;
-using System.Reflection.PortableExecutable;
-using System.Security.Authentication;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.TestPlatform.ObjectModel.DataCollection;
-using Microsoft.VisualStudio.TestPlatform.PlatformAbstractions.Interfaces;
 using Xunit;
 using Xunit.Abstractions;
-using static System.Collections.Specialized.BitVector32;
-using static System.Net.Test.Common.LoopbackServer;
 
 namespace System.Net.Http.Functional.Tests
 {
@@ -208,6 +196,7 @@ namespace System.Net.Http.Functional.Tests
                     string s = "Hello World ";
                     recvBytes = Encoding.ASCII.GetBytes(s);
                     await semaphore.WaitAsync();
+                    await semaphore.WaitAsync();
                     QuicException ex = await Assert.ThrowsAsync<QuicException>(async () => await wtServerBidirectionalStream.WriteAsync(recvBytes, true).ConfigureAwait(false));
                     Assert.Equal(276659048, ex.ApplicationErrorCode);
                     semaphore.Release();
@@ -218,6 +207,7 @@ namespace System.Net.Http.Functional.Tests
             {
                 using HttpClient client = CreateHttpClient();
                 Http3WebtransportSession session = await Http3WebtransportSession.ConnectAsync(server.Address, client, CancellationToken.None);
+                semaphore.Release();
                 await session.DisposeAsync();
                 semaphore.Release();
                 await semaphore.WaitAsync();
@@ -598,7 +588,7 @@ namespace System.Net.Http.Functional.Tests
                 CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
                 cancellationTokenSource.CancelAfter(5000);
                 Http3WebtransportSession session = await Http3WebtransportSession.ConnectAsync(server.Address, client, CancellationToken.None);
-                Assert.Null(await session.GetIncomingWebtransportStreamFromServerAsync(cancellationTokenSource.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(async () => await session.GetIncomingWebtransportStreamFromServerAsync(cancellationTokenSource.Token));
                 semaphore.Release();
             });
 
