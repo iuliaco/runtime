@@ -570,7 +570,7 @@ namespace System.Net.Http
                         {
                             VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan.Slice(bytesRead), out long sessionId, out bytesRead);
                             quicStream = null;
-                            WebtransportManager!.AcceptServerStream(stream, sessionId);
+                            WebtransportManager!.AcceptStream(stream, sessionId);
                             return;
                         }
                         stream.Abort(QuicAbortDirection.Read, (long)Http3ErrorCode.StreamCreationError);

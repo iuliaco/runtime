@@ -211,7 +211,7 @@ namespace System.Net.Test.Common
             await _outboundControlStream.SendSettingsFrameAsync(settings);
         }
 
-        public async Task<QuicStream> OpenWebtransportStreamAsync(QuicStreamType type)
+        public async Task<QuicStream> OpenOutboundStreamAsync(QuicStreamType type)
         {
             QuicStream stream = await _connection.OpenOutboundStreamAsync(type);
             return stream;

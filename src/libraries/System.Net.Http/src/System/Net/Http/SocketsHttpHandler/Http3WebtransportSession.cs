@@ -79,7 +79,7 @@ namespace System.Net.Http
             webtransportSession = connectedWebtransSessionContent.webtransportSession;
             if (!response.IsSuccessStatusCode || !response.Headers.Contains(Http3WebtransportSession.VersionHeaderPrefix))
             {
-                await webtransportSession.AbortIncomingSessionWebtransportStreamsAsync((long)Http3ErrorCode.WebtransportBufferedStreamRejected, cancellationToken).ConfigureAwait(false);
+                await webtransportSession.AbortIncomingInboundStreamsAsync((long)Http3ErrorCode.WebtransportBufferedStreamRejected, cancellationToken).ConfigureAwait(false);
                 await webtransportSession.DisposeAsync().ConfigureAwait(false);
                 throw new HttpRequestException(SR.net_webtransport_server_rejected);
             }
@@ -90,7 +90,7 @@ namespace System.Net.Http
         /// <summary>
         /// Takes the next incoming <see cref="QuicStream">quic stream from the server</see>.
         /// </summary>
-        public async ValueTask<QuicStream> GetIncomingWebtransportStreamFromServerAsync(CancellationToken cancellationToken = default)
+        public async ValueTask<QuicStream> AcceptInboundStreamAsync(CancellationToken cancellationToken = default)
         {
             if (_disposed == 1)
                 throw new ObjectDisposedException(nameof(Http3WebtransportSession));
@@ -106,14 +106,14 @@ namespace System.Net.Http
             }
         }
 
-        public bool TryGetIncomingWebtransportStreamFromServer(out QuicStream? quicStream)
+        public bool TryAcceptInboundStreamAsync(out QuicStream? quicStream)
         {
             return _disposed == 1
                 ? throw new ObjectDisposedException(nameof(Http3WebtransportSession))
                 : _incomingStreamsQueue.Reader.TryRead(out quicStream);
         }
 
-        internal void AcceptServerStream(QuicStream stream)
+        internal void AcceptStream(QuicStream stream)
         {
             if (_disposed == 1)
             {
@@ -126,7 +126,7 @@ namespace System.Net.Http
             Debug.Assert(added);
         }
 
-        internal async Task AbortIncomingSessionWebtransportStreamsAsync(long errorCode, CancellationToken cancellationToken = default)
+        internal async Task AbortIncomingInboundStreamsAsync(long errorCode, CancellationToken cancellationToken = default)
         {
             // check if they were not aborted before
             if(_incomingStreamsQueue.Writer.TryComplete())
@@ -142,7 +142,7 @@ namespace System.Net.Http
         /// <summary>
         /// Creates a new <see cref="QuicStream">quic stream and sends it to the server</see>.
         /// </summary>
-        public async ValueTask<QuicStream> OpenWebtransportStreamAsync(QuicStreamType type, CancellationToken cancellationToken = default)
+        public async ValueTask<QuicStream> OpenOutboundStreamAsync(QuicStreamType type, CancellationToken cancellationToken = default)
         {
             if (_disposed == 1)
                 throw new ObjectDisposedException(nameof(Http3WebtransportSession));
@@ -159,7 +159,7 @@ namespace System.Net.Http
                 return;
             RemoveFromSessionsDictionary();
 
-            await AbortIncomingSessionWebtransportStreamsAsync(0x107d7b68).ConfigureAwait(false);
+            await AbortIncomingInboundStreamsAsync(0x107d7b68).ConfigureAwait(false);
             await _connectStream.DisposeAsync().ConfigureAwait(false);
         }
 

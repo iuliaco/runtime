@@ -54,7 +54,7 @@ namespace System.Net.Http
             return _sessions.TryGetValue(streamId, out session);
         }
 
-        public void AcceptServerStream(QuicStream stream, long sessionId)
+        public void AcceptStream(QuicStream stream, long sessionId)
         {
             if (_disposed == 1)
             {
@@ -69,7 +69,7 @@ namespace System.Net.Http
                 stream.Abort(QuicAbortDirection.Both, (long)Http3ErrorCode.WebtransportBufferedStreamRejected);
                 return;
             }
-            session.AcceptServerStream(stream);
+            session.AcceptStream(stream);
         }
 
         public async ValueTask<QuicStream> CreateClientStreamAsync(QuicStreamType type, long sessionId, CancellationToken cancellationToken = default)
