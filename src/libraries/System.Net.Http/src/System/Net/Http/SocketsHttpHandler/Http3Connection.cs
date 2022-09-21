@@ -487,7 +487,7 @@ namespace System.Net.Http
             try
             {
                 buffer = new ArrayBuffer(initialSize: 32, usePool: true);
-                int bytesRead;
+                int bytesRead, bytesDecoded;
 
                 try
                 {
@@ -511,13 +511,13 @@ namespace System.Net.Http
                 }
 
                 buffer.Commit(bytesRead);
-                bool foundStreamType = VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan, out long streamType, out bytesRead);
-                while (foundStreamType is false)
+                bool foundStreamType = VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan, out long streamType, out bytesDecoded);
+                while (foundStreamType is false && bytesRead != 0 && buffer.ActiveLength < 8)
                 {
                     buffer.EnsureAvailableSpace(VariableLengthIntegerHelper.MaximumEncodedLength);
                     bytesRead = await stream.ReadAsync(buffer.AvailableMemory, CancellationToken.None).ConfigureAwait(false);
                     buffer.Commit(bytesRead);
-                    foundStreamType = VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan, out streamType, out bytesRead);
+                    foundStreamType = VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan, out streamType, out bytesDecoded);
                 }
                 switch (streamType)
                 {
@@ -568,7 +568,7 @@ namespace System.Net.Http
                     case (long)Http3StreamType.WebTransportUnidirectional:
                         if (EnableWebTransport)
                         {
-                            VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan.Slice(bytesRead), out long sessionId, out bytesRead);
+                            VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan.Slice(bytesDecoded), out long sessionId, out bytesDecoded);
                             disposeStream = false;
                             WebtransportManager!.AcceptStream(stream, sessionId);
                             return;
