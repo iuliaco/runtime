@@ -118,7 +118,7 @@ namespace System.Net.Http
             if (_disposed == 1)
             {
                 // WebtransportSessionGone error code
-                stream.Abort(QuicAbortDirection.Read, 0x107d7b68);
+                stream.Abort(QuicAbortDirection.Read, (long)Http3ErrorCode.WebtransportSessionGone);
                 return;
             }
 
@@ -159,7 +159,7 @@ namespace System.Net.Http
                 return;
             RemoveFromSessionsDictionary();
 
-            await AbortIncomingInboundStreamsAsync(0x107d7b68).ConfigureAwait(false);
+            await AbortIncomingInboundStreamsAsync((long)Http3ErrorCode.WebtransportSessionGone).ConfigureAwait(false);
             await _connectStream.DisposeAsync().ConfigureAwait(false);
         }
 
@@ -168,12 +168,12 @@ namespace System.Net.Http
             if (Interlocked.Exchange(ref _disposed, 1) == 1)
                 return;
             RemoveFromSessionsDictionary();
-            _connectStream.Dispose();
             _incomingStreamsQueue.Writer.Complete();
             while (_incomingStreamsQueue.Reader.TryRead(out QuicStream? stream))
             {
-                stream!.Abort(QuicAbortDirection.Read, 0x107d7b68);
+                stream!.Abort(QuicAbortDirection.Read, (long)Http3ErrorCode.WebtransportSessionGone);
             }
+            _connectStream.Dispose();
         }
     }
 

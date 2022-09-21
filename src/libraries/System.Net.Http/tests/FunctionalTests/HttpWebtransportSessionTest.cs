@@ -198,7 +198,7 @@ namespace System.Net.Http.Functional.Tests
                     await semaphore.WaitAsync();
                     await semaphore.WaitAsync();
                     QuicException ex = await Assert.ThrowsAsync<QuicException>(async () => await wtServerBidirectionalStream.WriteAsync(recvBytes, true).ConfigureAwait(false));
-                    Assert.Equal(276659048, ex.ApplicationErrorCode);
+                    Assert.Equal(386759528, ex.ApplicationErrorCode);
                     semaphore.Release();
                 }
             });

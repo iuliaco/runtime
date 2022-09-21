@@ -482,7 +482,7 @@ namespace System.Net.Http
         private async Task ProcessServerStreamAsync(QuicStream stream)
         {
             ArrayBuffer buffer = default;
-            QuicStream? quicStream = stream;
+            bool disposeStream = true;
 
             try
             {
@@ -534,7 +534,7 @@ namespace System.Net.Http
                         // Ownership of buffer is transferred to ProcessServerControlStreamAsync.
                         ArrayBuffer bufferCopy = buffer;
                         buffer = default;
-                        quicStream = null;
+                        disposeStream = false;
                         await ProcessServerControlStreamAsync(stream, bufferCopy).ConfigureAwait(false);
                         return;
                     case (byte)Http3StreamType.QPackDecoder:
@@ -569,7 +569,7 @@ namespace System.Net.Http
                         if (EnableWebTransport)
                         {
                             VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan.Slice(bytesRead), out long sessionId, out bytesRead);
-                            quicStream = null;
+                            disposeStream = false;
                             WebtransportManager!.AcceptStream(stream, sessionId);
                             return;
                         }
@@ -605,9 +605,9 @@ namespace System.Net.Http
             }
             finally
             {
-                if (quicStream != null)
+                if (disposeStream)
                 {
-                    await quicStream.DisposeAsync().ConfigureAwait(false);
+                    await stream.DisposeAsync().ConfigureAwait(false);
 
                 }
                 buffer.Dispose();
