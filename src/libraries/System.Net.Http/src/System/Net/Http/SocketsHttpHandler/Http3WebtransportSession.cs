@@ -166,6 +166,7 @@ namespace System.Net.Http
             if (Interlocked.Exchange(ref _disposed, 1) == 1)
                 return;
             RemoveFromSessionsDictionary();
+            // sync version of AbortIncomingInboundStreamsAsync
             _incomingStreamsQueue.Writer.Complete();
             while (_incomingStreamsQueue.Reader.TryRead(out QuicStream? stream))
             {
