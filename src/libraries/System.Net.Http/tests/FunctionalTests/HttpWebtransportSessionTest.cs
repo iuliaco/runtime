@@ -216,6 +216,9 @@ namespace System.Net.Http.Functional.Tests
             {
                 using HttpClient client = CreateHttpClient();
                 Http3WebtransportSession session = await Http3WebtransportSession.ConnectAsync(server.Address, client, CancellationToken.None);
+                // delay needed so the session will exist long enough so the server
+                // will accept the stream
+                await Task.Delay(200);
                 await semaphoreClient.WaitAsync();
                 await session.DisposeAsync();
                 semaphoreServer.Release();
@@ -345,6 +348,8 @@ namespace System.Net.Http.Functional.Tests
         {
             using Http3LoopbackServer server = CreateHttp3LoopbackServer();
             string s = "Hello World ";
+            SemaphoreSlim semaphore = new SemaphoreSlim(0);
+
 
             Task serverTask = Task.Run(async () =>
             {
@@ -375,7 +380,9 @@ namespace System.Net.Http.Functional.Tests
                         int bytesRead = await clientStream.ReadAsync(recvBytes, CancellationToken.None).ConfigureAwait(false);
                         Assert.Equal((s + i).Substring(0, bytesRead), Encoding.ASCII.GetString(recvBytes).Substring(0, bytesRead));
                     }
+                    await semaphore.WaitAsync();
                 }
+                
             });
 
             Task clientTask = Task.Run(async () =>
@@ -391,6 +398,7 @@ namespace System.Net.Http.Functional.Tests
                     await wtClientUnidirectionalStream.WriteAsync(recvBytes, true);
                     await wtClientUnidirectionalStream.DisposeAsync();
                 }
+                semaphore.Release();
             });
 
             await new[] { clientTask, serverTask }.WhenAllOrAnyFailed(20_000);
@@ -444,15 +452,15 @@ namespace System.Net.Http.Functional.Tests
                 Http3WebtransportSession session = await Http3WebtransportSession.ConnectAsync(server.Address, client, CancellationToken.None);
                 for (int i = 0; i < 20; i++)
                 {
-                    QuicStream help = await session.AcceptInboundStreamAsync();
+                    QuicStream quicStream = await session.AcceptInboundStreamAsync();
                     byte[] recvBytes = new byte[20];
                     recvBytes = Encoding.ASCII.GetBytes(s + i);
-                    await help.WriteAsync(recvBytes, true, CancellationToken.None).ConfigureAwait(false);
+                    await quicStream.WriteAsync(recvBytes, true, CancellationToken.None).ConfigureAwait(false);
                     recvBytes = new byte[20];
-                    int bytesRead = await help.ReadAsync(recvBytes, CancellationToken.None).ConfigureAwait(false);
+                    int bytesRead = await quicStream.ReadAsync(recvBytes, CancellationToken.None).ConfigureAwait(false);
                     Assert.Equal((s + i).Substring(0, bytesRead), Encoding.ASCII.GetString(recvBytes).Substring(0, bytesRead));
 
-                    await help.DisposeAsync();
+                    await quicStream.DisposeAsync();
                 }
 
             });
@@ -465,6 +473,7 @@ namespace System.Net.Http.Functional.Tests
         {
             using Http3LoopbackServer server = CreateHttp3LoopbackServer();
             string s = "Hello World ";
+            SemaphoreSlim semaphore = new SemaphoreSlim(0);
 
             Task serverTask = Task.Run(async () =>
             {
@@ -500,11 +509,11 @@ namespace System.Net.Http.Functional.Tests
                 for (int i = 0; i < 10; i++)
                 {
 
-                    QuicStream help = await session.AcceptInboundStreamAsync();
+                    QuicStream quicStream = await session.AcceptInboundStreamAsync();
                     byte[] recvBytes = new byte[20];
-                    int bytesRead = await help.ReadAsync(recvBytes, CancellationToken.None).ConfigureAwait(false);
+                    int bytesRead = await quicStream.ReadAsync(recvBytes, CancellationToken.None).ConfigureAwait(false);
                     Assert.Equal((s).Substring(0, bytesRead), Encoding.ASCII.GetString(recvBytes).Substring(0, bytesRead));
-                    await help.DisposeAsync();
+                    await quicStream.DisposeAsync();
                 }
             });
 
@@ -546,12 +555,12 @@ namespace System.Net.Http.Functional.Tests
             {
                 using HttpClient client = CreateHttpClient();
                 Http3WebtransportSession session = await Http3WebtransportSession.ConnectAsync(server.Address, client, CancellationToken.None);
-                QuicStream help = await session.AcceptInboundStreamAsync();
+                QuicStream quicStream = await session.AcceptInboundStreamAsync();
                 byte[] recvBytes = new byte[20];
                 recvBytes = Encoding.ASCII.GetBytes(s);
-                await Assert.ThrowsAsync<InvalidOperationException>(async () => await help.WriteAsync(recvBytes, true, CancellationToken.None).ConfigureAwait(false));
+                await Assert.ThrowsAsync<InvalidOperationException>(async () => await quicStream.WriteAsync(recvBytes, true, CancellationToken.None).ConfigureAwait(false));
 
-                await help.DisposeAsync();
+                await quicStream.DisposeAsync();
             });
 
             await new[] { clientTask, serverTask }.WhenAllOrAnyFailed(20_000);
