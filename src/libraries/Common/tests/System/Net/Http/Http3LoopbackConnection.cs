@@ -184,7 +184,7 @@ namespace System.Net.Test.Common
             return stream;
         }
 
-        public async Task<QuicStream> AcceptWebtransportStreamAsync()
+        public async Task<QuicStream> AcceptRawQuicStream()
         {
             await EnsureControlStreamAcceptedAsync().ConfigureAwait(false);
 

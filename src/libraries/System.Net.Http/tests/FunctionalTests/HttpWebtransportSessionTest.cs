@@ -24,12 +24,21 @@ namespace System.Net.Http.Functional.Tests
         {
         }
 
-        private async Task SendWebtransportStreamHeaderAsync(QuicStream stream, long streamType, long sessionId)
+        internal static async Task SendWebtransportStreamHeaderAsync(QuicStream stream, long streamType, long sessionId)
         {
             var buffer = new byte[3];
             int bytesWritten = Http3LoopbackStream.EncodeHttpInteger(streamType, buffer);
             bytesWritten += Http3LoopbackStream.EncodeHttpInteger(sessionId, buffer.AsSpan(bytesWritten));
             await stream.WriteAsync(buffer.AsMemory(0, bytesWritten)).ConfigureAwait(false);
+        }
+        internal static async Task<QuicStream> OpenWebtransportStreamAsync(Http3LoopbackConnection connection, QuicStreamType type, long sessionId)
+        {
+            QuicStream stream = await connection.OpenOutboundStreamAsync(type);
+            await SendWebtransportStreamHeaderAsync(
+                stream,
+                type == QuicStreamType.Unidirectional ? Http3LoopbackStream.UnidirectionalWebtransportStream : Http3LoopbackStream.BidirectionalWebtransportStream,
+                sessionId);
+            return stream;
         }
 
         private async Task<(long? frameType, long? session)> ReadWTFrameAsync(QuicStream stream)
@@ -190,8 +199,7 @@ namespace System.Net.Http.Functional.Tests
                     await stream.ReadRequestDataAsync(false);
                     await stream.SendResponseAsync(HttpStatusCode.OK, headers, "", false);
 
-                    var wtServerBidirectionalStream = await connection.OpenOutboundStreamAsync(QuicStreamType.Bidirectional);
-                    await SendWebtransportStreamHeaderAsync(wtServerBidirectionalStream, Http3LoopbackStream.BidirectionalWebtransportStream , stream.StreamId);
+                    QuicStream wtServerBidirectionalStream =await OpenWebtransportStreamAsync(connection, QuicStreamType.Bidirectional, stream.StreamId);
                     byte[] recvBytes = new byte[18];
                     string s = "Hello World ";
                     recvBytes = Encoding.ASCII.GetBytes(s);
@@ -240,8 +248,7 @@ namespace System.Net.Http.Functional.Tests
                     await stream.ReadRequestDataAsync(false);
                     await stream.SendResponseAsync(HttpStatusCode.OK, headers, "", false);
 
-                    var wtServerBidirectionalStream = await connection.OpenOutboundStreamAsync(QuicStreamType.Bidirectional);
-                    await SendWebtransportStreamHeaderAsync(wtServerBidirectionalStream, Http3LoopbackStream.BidirectionalWebtransportStream, stream.StreamId + 1);
+                    var wtServerBidirectionalStream = await OpenWebtransportStreamAsync(connection, QuicStreamType.Bidirectional, stream.StreamId + 1);
 
                     byte[] recvBytes = new byte[18];
                     string s = "Hellp world";
@@ -294,7 +301,7 @@ namespace System.Net.Http.Functional.Tests
                     await stream.SendResponseAsync(HttpStatusCode.OK, headers, "", false);
                     for (int i = 0; i < 20; i++)
                     {
-                        QuicStream clientStream = await connection.AcceptWebtransportStreamAsync();
+                        QuicStream clientStream = await connection.AcceptRawQuicStream();
                         (long? frameType, long? sessionId) = await ReadWTFrameAsync(clientStream);
                         Assert.Equal(stream.StreamId, sessionId);
                         byte[] recvBytes = new byte[20];
@@ -358,7 +365,7 @@ namespace System.Net.Http.Functional.Tests
 
                     for (int i = 0; i < 20; i++)
                     {
-                        QuicStream clientStream = await connection.AcceptWebtransportStreamAsync();
+                        QuicStream clientStream = await connection.AcceptRawQuicStream();
                         (long? frameType, long? sessionId) = await ReadWTFrameAsync(clientStream);
                         Assert.Equal(stream.StreamId, sessionId);
                         byte[] recvBytes = new byte[20];
@@ -414,8 +421,7 @@ namespace System.Net.Http.Functional.Tests
 
                     for (int i = 0; i < 20; i++)
                     {
-                        var wtServerBidirectionalStream = await connection.OpenOutboundStreamAsync(QuicStreamType.Bidirectional);
-                        await SendWebtransportStreamHeaderAsync(wtServerBidirectionalStream, Http3LoopbackStream.BidirectionalWebtransportStream, stream.StreamId);
+                        var wtServerBidirectionalStream = await OpenWebtransportStreamAsync(connection, QuicStreamType.Bidirectional, stream.StreamId);
                         byte[] recvBytes = new byte[18];
                         int bytesRead = 0;
                         bytesRead = await wtServerBidirectionalStream.ReadAsync(recvBytes, CancellationToken.None).ConfigureAwait(false);
@@ -475,8 +481,7 @@ namespace System.Net.Http.Functional.Tests
 
                 for (int i = 0; i < 10; i++)
                 {
-                    var wtServerUnidirectionalStream = await connection.OpenOutboundStreamAsync(QuicStreamType.Unidirectional);
-                    await SendWebtransportStreamHeaderAsync(wtServerUnidirectionalStream, Http3LoopbackStream.UnidirectionalWebtransportStream, stream.StreamId);
+                    var wtServerUnidirectionalStream = await OpenWebtransportStreamAsync(connection, QuicStreamType.Unidirectional, stream.StreamId);
                     byte[] recvBytes = new byte[20];
                     recvBytes = Encoding.ASCII.GetBytes(s);
                     await wtServerUnidirectionalStream.WriteAsync(recvBytes, true).ConfigureAwait(false);
@@ -529,8 +534,7 @@ namespace System.Net.Http.Functional.Tests
                     await stream.ReadRequestDataAsync(false);
                     await stream.SendResponseAsync(HttpStatusCode.OK, headers, "", false);
 
-                    var wtServerUnidirectionalStream = await connection.OpenOutboundStreamAsync(QuicStreamType.Unidirectional);
-                    await SendWebtransportStreamHeaderAsync(wtServerUnidirectionalStream, Http3LoopbackStream.UnidirectionalWebtransportStream, stream.StreamId);
+                    var wtServerUnidirectionalStream = await OpenWebtransportStreamAsync(connection, QuicStreamType.Unidirectional, stream.StreamId);
 
                 }
             });
@@ -625,6 +629,8 @@ namespace System.Net.Http.Functional.Tests
                 semaphore.Release();
                 await connection.CloseAsync(10000);
                 semaphore.Release();
+                await semaphore.WaitAsync();
+
             });
 
             Task clientTask = Task.Run(async () =>
@@ -639,6 +645,8 @@ namespace System.Net.Http.Functional.Tests
                 await Assert.ThrowsAsync<ObjectDisposedException>(async () => await session3.OpenOutboundStreamAsync(QuicStreamType.Unidirectional));
                 await semaphore.WaitAsync();
                 await Assert.ThrowsAsync<ObjectDisposedException>(async () => await session1.OpenOutboundStreamAsync(QuicStreamType.Unidirectional));
+                semaphore.Release();
+
             });
 
             await new[] { clientTask, serverTask }.WhenAllOrAnyFailed(20_000);
@@ -670,19 +678,17 @@ namespace System.Net.Http.Functional.Tests
                 await stream2.ReadRequestDataAsync(false);
                 await stream2.SendResponseAsync(HttpStatusCode.OK, headers, "", false);
 
-                QuicStream wtClientBidirectionalStream1 = await connection.AcceptWebtransportStreamAsync();
+                QuicStream wtClientBidirectionalStream1 = await connection.AcceptRawQuicStream();
                 (long? frameType1, long? sessionId1) = await ReadWTFrameAsync(wtClientBidirectionalStream1);
                 Assert.Equal(stream1.StreamId, sessionId1);
 
-                QuicStream wtClientBidirectionalStream2 = await connection.AcceptWebtransportStreamAsync();
+                QuicStream wtClientBidirectionalStream2 = await connection.AcceptRawQuicStream();
                 (long? frameType2, long? sessionId2) = await ReadWTFrameAsync(wtClientBidirectionalStream2);
                 Assert.Equal(stream2.StreamId, sessionId2);
 
-                var wtServerBidirectionalStream1 = await connection.OpenOutboundStreamAsync(QuicStreamType.Bidirectional);
-                await SendWebtransportStreamHeaderAsync(wtServerBidirectionalStream1, Http3LoopbackStream.BidirectionalWebtransportStream, stream1.StreamId);
+                var wtServerBidirectionalStream1 = await OpenWebtransportStreamAsync(connection, QuicStreamType.Bidirectional, stream1.StreamId);
 
-                var wtServerBidirectionalStream2 = await connection.OpenOutboundStreamAsync(QuicStreamType.Bidirectional);
-                await SendWebtransportStreamHeaderAsync(wtServerBidirectionalStream2, Http3LoopbackStream.BidirectionalWebtransportStream, stream2.StreamId);
+                var wtServerBidirectionalStream2 = await OpenWebtransportStreamAsync(connection, QuicStreamType.Bidirectional, stream2.StreamId);
 
                 byte[] recvBytes = new byte[20];
                 recvBytes = Encoding.ASCII.GetBytes(s);
@@ -788,13 +794,11 @@ namespace System.Net.Http.Functional.Tests
                 QuicStream help;
                 if(!clientInitiated)
                 {
-                    help = await connection.OpenOutboundStreamAsync(type);
-                    await SendWebtransportStreamHeaderAsync(help, (type == QuicStreamType.Unidirectional) ?
-                        Http3LoopbackStream.UnidirectionalWebtransportStream : Http3LoopbackStream.BidirectionalWebtransportStream, stream.StreamId);
+                    help = await OpenWebtransportStreamAsync(connection, type, stream.StreamId);
                 }
                 else
                 {
-                    help = await connection.AcceptWebtransportStreamAsync();
+                    help = await connection.AcceptRawQuicStream();
                     (long? frameType, long? sessionId) = await ReadWTFrameAsync(help);
                     Assert.Equal(stream.StreamId, sessionId);
 

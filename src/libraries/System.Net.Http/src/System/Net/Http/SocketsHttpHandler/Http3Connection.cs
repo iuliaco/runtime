@@ -133,7 +133,7 @@ namespace System.Net.Http
 
             if (_connection != null)
             {
-                WebtransportManager?.Dispose();
+               // WebtransportManager?.Dispose();
                 // Close the QuicConnection in the background.
                 _connectionClosedTask ??= _connection.CloseAsync((long)Http3ErrorCode.NoError).AsTask();
 
