@@ -632,7 +632,6 @@ namespace System.Net.Http.Functional.Tests
                 semaphore.Release();
                 await connection.CloseAsync(10000);
                 semaphore.Release();
-                await semaphore.WaitAsync();
 
             });
 
@@ -648,7 +647,6 @@ namespace System.Net.Http.Functional.Tests
                 await Assert.ThrowsAsync<ObjectDisposedException>(async () => await session3.OpenOutboundStreamAsync(QuicStreamType.Unidirectional));
                 await semaphore.WaitAsync();
                 await Assert.ThrowsAsync<ObjectDisposedException>(async () => await session1.OpenOutboundStreamAsync(QuicStreamType.Unidirectional));
-                semaphore.Release();
 
             });
 

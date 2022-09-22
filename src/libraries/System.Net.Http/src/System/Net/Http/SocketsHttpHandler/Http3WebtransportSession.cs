@@ -133,7 +133,8 @@ namespace System.Net.Http
                 Runtime.CompilerServices.ConfiguredCancelableAsyncEnumerable<QuicStream> incomingStreams = _incomingStreamsQueue.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false);
                 await foreach (QuicStream incomingStream in incomingStreams)
                 {
-                    incomingStream.Abort(QuicAbortDirection.Read, errorCode);
+                    incomingStream.Abort(QuicAbortDirection.Both, errorCode);
+                    await incomingStream.DisposeAsync().ConfigureAwait(false);
                 }
             }
         }
@@ -170,7 +171,8 @@ namespace System.Net.Http
             _incomingStreamsQueue.Writer.Complete();
             while (_incomingStreamsQueue.Reader.TryRead(out QuicStream? stream))
             {
-                stream!.Abort(QuicAbortDirection.Read, (long)Http3ErrorCode.WebtransportSessionGone);
+                stream!.Abort(QuicAbortDirection.Both, (long)Http3ErrorCode.WebtransportSessionGone);
+                stream!.Dispose();
             }
             _connectStream.Dispose();
         }
