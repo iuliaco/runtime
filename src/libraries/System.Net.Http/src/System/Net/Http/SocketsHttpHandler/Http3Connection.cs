@@ -38,7 +38,7 @@ namespace System.Net.Http
 
         // Current SETTINGS from the server.
         private int _maximumHeadersLength = int.MaxValue; // TODO: this is not yet observed by Http3Stream when buffering headers.
-        private bool _enableWebTransport; // by default setted with 0
+        private bool _enableWebTransport;
         private TaskCompletionSource _expectedSettingsFrameProcessed = new TaskCompletionSource(); // True indicates that the settings frame was processed
         internal Http3WebtransportManager? WebtransportManager;
 
@@ -512,6 +512,8 @@ namespace System.Net.Http
 
                 buffer.Commit(bytesRead);
                 bool foundStreamType = VariableLengthIntegerHelper.TryRead(buffer.ActiveSpan, out long streamType, out bytesDecoded);
+                // if the stream type could not be found/ is encoded in more tham 3 bytes then we are going to read
+                // until we found the type, or the sending stream finishes writing or until we read enough bytes
                 while (foundStreamType is false && bytesRead != 0 && buffer.ActiveLength < 8)
                 {
                     buffer.EnsureAvailableSpace(VariableLengthIntegerHelper.MaximumEncodedLength);
@@ -585,7 +587,7 @@ namespace System.Net.Http
 
                         if (NetEventSource.Log.IsEnabled())
                         {
-                            // Read the rest of the integer, which might be more than 1 byte, so we can log it.
+                            // Log the unknown type
                             NetEventSource.Info(this, $"Ignoring server-initiated stream of unknown type {streamType}.");
                         }
 
