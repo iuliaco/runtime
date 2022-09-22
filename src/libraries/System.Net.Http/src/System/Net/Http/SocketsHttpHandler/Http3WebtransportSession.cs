@@ -24,7 +24,7 @@ namespace System.Net.Http
 
     public class Http3WebtransportSession : IAsyncDisposable, IDisposable
     {
-        private readonly QuicStream _connectStream;
+        internal readonly QuicStream _connectStream;
 
         public long Id
         {
@@ -61,7 +61,6 @@ namespace System.Net.Http
                 await DisposeAsync().ConfigureAwait(false);
 
             }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
-
         }
 
         /// <summary>

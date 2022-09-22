@@ -175,7 +175,8 @@ namespace System.Net.Http.Functional.Tests
         public async Task WebTransportSessionGoneError()
         {
             using Http3LoopbackServer server = CreateHttp3LoopbackServer();
-            SemaphoreSlim semaphore = new SemaphoreSlim(0);
+            SemaphoreSlim semaphoreClient = new SemaphoreSlim(0);
+            SemaphoreSlim semaphoreServer = new SemaphoreSlim(0);
 
             Task serverTask = Task.Run(async () =>
             {
@@ -203,11 +204,11 @@ namespace System.Net.Http.Functional.Tests
                     byte[] recvBytes = new byte[18];
                     string s = "Hello World ";
                     recvBytes = Encoding.ASCII.GetBytes(s);
-                    await semaphore.WaitAsync();
-                    await semaphore.WaitAsync();
+                    semaphoreClient.Release();
+                    await semaphoreServer.WaitAsync();
                     QuicException ex = await Assert.ThrowsAsync<QuicException>(async () => await wtServerBidirectionalStream.WriteAsync(recvBytes, true).ConfigureAwait(false));
                     Assert.Equal(386759528, ex.ApplicationErrorCode);
-                    semaphore.Release();
+                    semaphoreClient.Release();
                 }
             });
 
@@ -215,10 +216,10 @@ namespace System.Net.Http.Functional.Tests
             {
                 using HttpClient client = CreateHttpClient();
                 Http3WebtransportSession session = await Http3WebtransportSession.ConnectAsync(server.Address, client, CancellationToken.None);
-                semaphore.Release();
+                await semaphoreClient.WaitAsync();
                 await session.DisposeAsync();
-                semaphore.Release();
-                await semaphore.WaitAsync();
+                semaphoreServer.Release();
+                await semaphoreClient.WaitAsync();
             });
 
             await new[] { clientTask, serverTask }.WhenAllOrAnyFailed(20_000);
@@ -228,7 +229,9 @@ namespace System.Net.Http.Functional.Tests
         public async Task WebtransportBufferedStreamError()
         {
             using Http3LoopbackServer server = CreateHttp3LoopbackServer();
-            SemaphoreSlim semaphore = new SemaphoreSlim(0);
+            SemaphoreSlim semaphoreClient = new SemaphoreSlim(0);
+            SemaphoreSlim semaphoreServer = new SemaphoreSlim(0);
+
             Task serverTask = Task.Run(async () =>
             {
                 ICollection<(long settingId, long settingValue)> settings = new LinkedList<(long settingId, long settingValue)>();
@@ -253,11 +256,11 @@ namespace System.Net.Http.Functional.Tests
                     byte[] recvBytes = new byte[18];
                     string s = "Hellp world";
                     recvBytes = Encoding.ASCII.GetBytes(s);
-                    await semaphore.WaitAsync();
+                    await semaphoreClient.WaitAsync();
 
                     QuicException ex = await Assert.ThrowsAsync<QuicException>(async () => await wtServerBidirectionalStream.WriteAsync(recvBytes, true).ConfigureAwait(false));
                     Assert.Equal(966049156, ex.ApplicationErrorCode);
-                    semaphore.Release();
+                    semaphoreServer.Release();
 
                 }
             });
@@ -267,8 +270,8 @@ namespace System.Net.Http.Functional.Tests
                 using HttpClient client = CreateHttpClient();
                 Http3WebtransportSession session = await Http3WebtransportSession.ConnectAsync(server.Address, client, CancellationToken.None);
                 await session.DisposeAsync();
-                semaphore.Release();
-                await semaphore.WaitAsync();
+                semaphoreClient.Release();
+                await semaphoreServer.WaitAsync();
 
             });
 

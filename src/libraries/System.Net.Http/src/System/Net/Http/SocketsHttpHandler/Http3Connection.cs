@@ -135,6 +135,7 @@ namespace System.Net.Http
             {
                 // Close the QuicConnection in the background.
                 _connectionClosedTask ??= _connection.CloseAsync((long)Http3ErrorCode.NoError).AsTask();
+                WebtransportManager?.Dispose();
 
                 QuicConnection connection = _connection;
                 _connection = null;
@@ -188,7 +189,7 @@ namespace System.Net.Http
                     {
                         throw new HttpRequestException(SR.net_unsupported_webtransport);
                     }
-                    WebtransportManager ??= new Http3WebtransportManager(_connection!);
+                    WebtransportManager ??= new Http3WebtransportManager(_connection!, this);
                 }
                 try
                 {

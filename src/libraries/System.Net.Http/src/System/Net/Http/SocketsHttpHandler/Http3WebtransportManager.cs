@@ -19,16 +19,18 @@ namespace System.Net.Http
     [SupportedOSPlatform("windows")]
     [SupportedOSPlatform("linux")]
     [SupportedOSPlatform("macos")]
-    internal sealed class Http3WebtransportManager : IDisposable, IAsyncDisposable
+    internal sealed class Http3WebtransportManager : IDisposable
     {
         private ConcurrentDictionary<long, Http3WebtransportSession> _sessions;
         private QuicConnection _connection;
+        private Http3Connection _http3Connection;
         private int _disposed;
 
-        public Http3WebtransportManager(QuicConnection connection)
+        public Http3WebtransportManager(QuicConnection connection, Http3Connection http3Connection)
         {
             _sessions = new ConcurrentDictionary<long, Http3WebtransportSession>();
             _connection = connection;
+            _http3Connection = http3Connection;
         }
 
         public void AddSession(QuicStream connectStream, Http3WebtransportSession webtransportSession)
@@ -111,29 +113,14 @@ namespace System.Net.Http
             {
                 throw new ObjectDisposedException(nameof(Http3WebtransportManager));
             }
-
-            _sessions.TryRemove(id, out _);
+            lock(_sessions)
+            {
+                _sessions.TryRemove(id, out Http3WebtransportSession? session);
+                Debug.Assert(session != null);
+                _http3Connection.RemoveStream(session!._connectStream);
+            }
         }
 
-        public async ValueTask DisposeAsync()
-        {
-            if (Interlocked.Exchange(ref _disposed, 1) == 1)
-                return;
-            List<Http3WebtransportSession> toRemove = new List<Http3WebtransportSession>();
-            lock (_sessions)
-            {
-                foreach (KeyValuePair<long, Http3WebtransportSession> pair in _sessions)
-                {
-                    toRemove.Add(pair.Value);
-                }
-                _sessions.Clear();
-            }
-            foreach (Http3WebtransportSession session in toRemove)
-            {
-                await session.DisposeAsync().ConfigureAwait(false);
-            }
-
-        }
         public void Dispose()
         {
             if (Interlocked.Exchange(ref _disposed, 1) == 1)
