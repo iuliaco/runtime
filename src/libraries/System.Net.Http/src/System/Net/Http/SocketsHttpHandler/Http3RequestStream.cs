@@ -127,6 +127,12 @@ namespace System.Net.Http
         public void GoAway()
         {
             _requestBodyCancellationSource.Cancel();
+            if(isWebtransportSessionStream)
+            {
+                _connection.RemoveStream(_stream);
+                _stream.Abort(QuicAbortDirection.Both, (long)Http3ErrorCode.RequestCancelled);
+                _stream.Dispose();
+            }
         }
 
         public async Task<HttpResponseMessage> SendAsync(CancellationToken cancellationToken)

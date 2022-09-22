@@ -767,6 +767,7 @@ namespace System.Net.Http.Functional.Tests
         public async Task WebtransportStreamMultipleReadsAndWrites(QuicStreamType type, bool clientInitiated)
         {
             using Http3LoopbackServer server = CreateHttp3LoopbackServer();
+            SemaphoreSlim semaphore = new SemaphoreSlim(0);
             byte[] s_data = "Hello world!"u8.ToArray();
             const int sendCount = 5;
             int expectedBytesCount = s_data.Length * sendCount;
@@ -791,15 +792,15 @@ namespace System.Net.Http.Functional.Tests
                 Http3LoopbackStream stream = await connection.AcceptRequestStreamAsync();
                 await stream.ReadRequestDataAsync(false);
                 await stream.SendResponseAsync(HttpStatusCode.OK, headers, "", false);
-                QuicStream help;
+                QuicStream quicStream;
                 if(!clientInitiated)
                 {
-                    help = await OpenWebtransportStreamAsync(connection, type, stream.StreamId);
+                    quicStream = await OpenWebtransportStreamAsync(connection, type, stream.StreamId);
                 }
                 else
                 {
-                    help = await connection.AcceptRawQuicStream();
-                    (long? frameType, long? sessionId) = await ReadWTFrameAsync(help);
+                    quicStream = await connection.AcceptRawQuicStream();
+                    (long? frameType, long? sessionId) = await ReadWTFrameAsync(quicStream);
                     Assert.Equal(stream.StreamId, sessionId);
 
                 }
@@ -808,19 +809,20 @@ namespace System.Net.Http.Functional.Tests
                 {
                     for (int i = 0; i < sendCount; i++)
                     {
-                        await help.WriteAsync(s_data);
+                        await quicStream.WriteAsync(s_data);
                     }
-                    await help.WriteAsync(Memory<byte>.Empty, completeWrites: true);
+                    quicStream.CompleteWrites();
 
                 }
 
                 if (clientInitiated || (!clientInitiated && type == QuicStreamType.Bidirectional))
                 {
                     byte[] buffer = new byte[expectedBytesCount];
-                    int bytesRead = await ReadAll(help, buffer);
+                    int bytesRead = await ReadAll(quicStream, buffer);
                     Assert.Equal(expectedBytesCount, bytesRead);
                     Assert.Equal(expected, buffer);
                 }
+                await semaphore.WaitAsync();
 
             });
 
@@ -828,36 +830,38 @@ namespace System.Net.Http.Functional.Tests
             {
                 using HttpClient client = CreateHttpClient();
                 Http3WebtransportSession session = await Http3WebtransportSession.ConnectAsync(server.Address, client, CancellationToken.None);
-                QuicStream help;
+                QuicStream quicStream;
                 if (clientInitiated == false)
                 {
-                    help = await session.AcceptInboundStreamAsync();
-                    Assert.NotNull(help);
+                    quicStream = await session.AcceptInboundStreamAsync();
+                    Assert.NotNull(quicStream);
                 }
                 else
                 {
-                    help = await session.OpenOutboundStreamAsync(type);
+                    quicStream = await session.OpenOutboundStreamAsync(type);
                 }
 
                 if (clientInitiated || (!clientInitiated && type == QuicStreamType.Bidirectional))
                 {
                     for (int i = 0; i < sendCount; i++)
                     {
-                        await help.WriteAsync(s_data);
+                        await quicStream.WriteAsync(s_data);
                     }
-                    await help.WriteAsync(Memory<byte>.Empty, completeWrites: true);
+                    quicStream.CompleteWrites();
 
                 }
 
                 if (!clientInitiated || (clientInitiated && type == QuicStreamType.Bidirectional))
                 {
                     byte[] buffer = new byte[expectedBytesCount];
-                    int bytesRead = await ReadAll(help, buffer);
+                    int bytesRead = await ReadAll(quicStream, buffer);
                     Assert.Equal(expectedBytesCount, bytesRead);
                     Assert.Equal(expected, buffer);
                 }
 
                await session.DisposeAsync();
+               semaphore.Release();
+
             });
 
             await new[] { clientTask, serverTask }.WhenAllOrAnyFailed(20_000);

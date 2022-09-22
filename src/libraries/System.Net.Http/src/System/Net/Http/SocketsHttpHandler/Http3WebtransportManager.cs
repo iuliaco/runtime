@@ -138,19 +138,7 @@ namespace System.Net.Http
         {
             if (Interlocked.Exchange(ref _disposed, 1) == 1)
                 return;
-            lock (_sessions)
-            {
-                List<Http3WebtransportSession> toRemove = new List<Http3WebtransportSession>();
-                foreach (KeyValuePair<long, Http3WebtransportSession> pair in _sessions)
-                {
-                    toRemove.Add(pair.Value);
-                }
-                _sessions.Clear();
-                foreach (Http3WebtransportSession session in toRemove)
-                {
-                    session.Dispose();
-                }
-            }
+            Debug.Assert(_sessions.IsEmpty);
         }
     }
 }

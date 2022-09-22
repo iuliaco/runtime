@@ -117,8 +117,8 @@ namespace System.Net.Http
         {
             if (_disposed == 1)
             {
-                // WebtransportSessionGone error code
-                stream.Abort(QuicAbortDirection.Read, (long)Http3ErrorCode.WebtransportSessionGone);
+                stream.Abort(QuicAbortDirection.Both, (long)Http3ErrorCode.WebtransportSessionGone);
+                stream.Dispose();
                 return;
             }
 
@@ -158,7 +158,6 @@ namespace System.Net.Http
             if (Interlocked.Exchange(ref _disposed, 1) == 1)
                 return;
             RemoveFromSessionsDictionary();
-
             await AbortIncomingInboundStreamsAsync((long)Http3ErrorCode.WebtransportSessionGone).ConfigureAwait(false);
             await _connectStream.DisposeAsync().ConfigureAwait(false);
         }
