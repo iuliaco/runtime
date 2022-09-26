@@ -260,7 +260,7 @@ namespace System.Net.Http.Functional.Tests
                     string s = "Hellp world";
                     recvBytes = Encoding.ASCII.GetBytes(s);
                     await semaphoreClient.WaitAsync();
-
+                    await Task.Delay(200);
                     QuicException ex = await Assert.ThrowsAsync<QuicException>(async () => await wtServerBidirectionalStream.WriteAsync(recvBytes, true).ConfigureAwait(false));
                     Assert.Equal(966049156, ex.ApplicationErrorCode);
                     semaphoreServer.Release();
@@ -380,7 +380,7 @@ namespace System.Net.Http.Functional.Tests
                         int bytesRead = await clientStream.ReadAsync(recvBytes, CancellationToken.None).ConfigureAwait(false);
                         Assert.Equal((s + i).Substring(0, bytesRead), Encoding.ASCII.GetString(recvBytes).Substring(0, bytesRead));
                     }
-                    await semaphore.WaitAsync();
+                    semaphore.Release();
                 }
                 
             });
@@ -398,7 +398,7 @@ namespace System.Net.Http.Functional.Tests
                     await wtClientUnidirectionalStream.WriteAsync(recvBytes, true);
                     await wtClientUnidirectionalStream.DisposeAsync();
                 }
-                semaphore.Release();
+                await semaphore.WaitAsync();
             });
 
             await new[] { clientTask, serverTask }.WhenAllOrAnyFailed(20_000);
