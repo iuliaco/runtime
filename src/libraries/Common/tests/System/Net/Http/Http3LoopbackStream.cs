@@ -27,8 +27,11 @@ namespace System.Net.Test.Common
 
         public const long ControlStream = 0x0;
         public const long PushStream = 0x1;
+        public const long UnidirectionalWebtransportStream = 0x54;
+        public const long BidirectionalWebtransportStream = 0x41;
 
         public const long MaxHeaderListSize = 0x6;
+        public const long EnableWebTransport = 0x2b603742;
 
         private readonly QuicStream _stream;
 
@@ -168,7 +171,7 @@ namespace System.Net.Test.Common
             await _stream.WriteAsync(framePayload).ConfigureAwait(false);
         }
 
-        static int EncodeHttpInteger(long longToEncode, Span<byte> buffer)
+        public static int EncodeHttpInteger(long longToEncode, Span<byte> buffer)
         {
             Debug.Assert(longToEncode >= 0);
             Debug.Assert(longToEncode <= VarIntMax);
@@ -473,7 +476,7 @@ namespace System.Net.Test.Common
             return integerValue;
         }
 
-        static bool TryDecodeHttpInteger(ReadOnlySpan<byte> buffer, out long value, out int bytesRead)
+        public static bool TryDecodeHttpInteger(ReadOnlySpan<byte> buffer, out long value, out int bytesRead)
         {
             const byte LengthMask = 0xC0;
             const byte LengthOneByte = 0x00;

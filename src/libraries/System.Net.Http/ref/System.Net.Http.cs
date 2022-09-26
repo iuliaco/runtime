@@ -299,6 +299,22 @@ namespace System.Net.Http
         public void Set<TValue>(HttpRequestOptionsKey<TValue> key, TValue value) { throw null; }
     }
 
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    [System.Runtime.Versioning.SupportedOSPlatform("linux")]
+    [System.Runtime.Versioning.SupportedOSPlatform("macos")]
+    [System.Runtime.Versioning.UnsupportedOSPlatform("browser")]
+    public sealed class Http3WebtransportSession : System.IAsyncDisposable, IDisposable
+    {
+        public long Id { get { throw null; } }
+        internal Http3WebtransportSession() { }
+        public static System.Threading.Tasks.ValueTask<Http3WebtransportSession> ConnectAsync(Uri uri, HttpMessageInvoker invoker, System.Threading.CancellationToken cancellationToken) { throw null; }
+        public bool TryAcceptInboundStreamAsync(out System.Net.Quic.QuicStream? quicStream) { throw null; }
+        public System.Threading.Tasks.ValueTask<System.Net.Quic.QuicStream> AcceptInboundStreamAsync(System.Threading.CancellationToken cancellationToken = default) { throw null; }
+        public System.Threading.Tasks.ValueTask<System.Net.Quic.QuicStream> OpenOutboundStreamAsync(System.Net.Quic.QuicStreamType type, System.Threading.CancellationToken cancellationToken = default) { throw null; }
+        public System.Threading.Tasks.ValueTask DisposeAsync() { throw null; }
+        public void Dispose() { throw null; }
+    }
+
     public partial class HttpResponseMessage : System.IDisposable
     {
         public HttpResponseMessage() { }

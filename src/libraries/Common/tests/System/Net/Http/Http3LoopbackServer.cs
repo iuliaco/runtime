@@ -66,13 +66,18 @@ namespace System.Net.Test.Common
             _cert.Dispose();
         }
 
-        private async Task<Http3LoopbackConnection> EstablishHttp3ConnectionAsync()
+        private async Task<Http3LoopbackConnection> EstablishHttp3ConnectionAsync(ICollection<(long settingId, long settingValue)> settings = null)
         {
             QuicConnection con = await _listener.AcceptConnectionAsync().ConfigureAwait(false);
             Http3LoopbackConnection connection = new Http3LoopbackConnection(con);
 
-            await connection.EstablishControlStreamAsync();
+            await connection.EstablishControlStreamAsync(settings);
             return connection;
+        }
+
+        public async Task<GenericLoopbackConnection> EstablishGenericConnectionAsync(ICollection<(long settingId, long settingValue)> settings = null)
+        {
+            return await EstablishHttp3ConnectionAsync(settings);
         }
 
         public override async Task<GenericLoopbackConnection> EstablishGenericConnectionAsync()

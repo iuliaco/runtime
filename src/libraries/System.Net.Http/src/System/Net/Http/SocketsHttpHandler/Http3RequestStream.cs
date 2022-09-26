@@ -31,6 +31,7 @@ namespace System.Net.Http
         private TaskCompletionSource<bool>? _expect100ContinueCompletionSource; // True indicates we should send content (e.g. received 100 Continue).
         private bool _disposed;
         private CancellationTokenSource _requestBodyCancellationSource;
+        private bool isWebtransportSessionStream;
 
         // Allocated when we receive a :status header.
         private HttpResponseMessage? _response;
@@ -65,6 +66,8 @@ namespace System.Net.Http
             set => Volatile.Write(ref _streamId, value);
         }
 
+        public QuicStream quicStream => _stream;
+
         public Http3RequestStream(HttpRequestMessage request, Http3Connection connection, QuicStream stream)
         {
             _request = request;
@@ -80,6 +83,7 @@ namespace System.Net.Http
 
             _requestSendCompleted = _request.Content == null;
             _responseRecvCompleted = false;
+            isWebtransportSessionStream = _request.IsWebTransportH3Request;
         }
 
         public void Dispose()
@@ -123,6 +127,11 @@ namespace System.Net.Http
         public void GoAway()
         {
             _requestBodyCancellationSource.Cancel();
+            if(isWebtransportSessionStream)
+            {
+                _stream.Abort(QuicAbortDirection.Both, (long)Http3ErrorCode.RequestCancelled);
+                _stream.Dispose();
+            }
         }
 
         public async Task<HttpResponseMessage> SendAsync(CancellationToken cancellationToken)
@@ -139,6 +148,11 @@ namespace System.Net.Http
             bool shouldCancelBody = true;
             try
             {
+                Http3WebtransportSession? webtransportSession = null;
+                if (isWebtransportSessionStream)
+                {
+                    webtransportSession = new Http3WebtransportSession(quicStream, _connection.WebtransportManager!);
+                }
                 BufferHeaders(_request);
 
                 // If using Expect 100 Continue, setup a TCS to wait to send content until we get a response.
@@ -155,7 +169,7 @@ namespace System.Net.Http
 
                     // End the stream writing if there's no content to send, do it as part of the write so that the FIN flag isn't send in an empty QUIC frame.
                     // Note that there's no need to call Shutdown separately since the FIN flag in the last write is the same thing.
-                    await FlushSendBufferAsync(endStream: _request.Content == null, _requestBodyCancellationSource.Token).ConfigureAwait(false);
+                    await FlushSendBufferAsync(endStream: _request.Content == null && !isWebtransportSessionStream, _requestBodyCancellationSource.Token).ConfigureAwait(false);
                 }
 
                 Task sendContentTask;
@@ -213,7 +227,11 @@ namespace System.Net.Http
                 // we can close our Http3RequestStream immediately and return a singleton empty content stream. Otherwise, we
                 // need to return a Http3ReadStream which will be responsible for disposing the Http3RequestStream.
                 bool useEmptyResponseContent = responseContent.Headers.ContentLength == 0 && sendContentObserved;
-                if (useEmptyResponseContent)
+                if(isWebtransportSessionStream)
+                {
+                    _response.Content = new WebtransportHttpContent(session: webtransportSession!);
+                }
+                else if (useEmptyResponseContent)
                 {
                     // Drain the response frames to read any trailing headers.
                     await DrainContentLength0Frames(_requestBodyCancellationSource.Token).ConfigureAwait(false);
@@ -237,7 +255,7 @@ namespace System.Net.Http
                 _response = null;
 
                 // If we're 100% done with the stream, dispose.
-                disposeSelf = useEmptyResponseContent;
+                disposeSelf = useEmptyResponseContent && !isWebtransportSessionStream;
 
                 // Success, don't cancel the body.
                 shouldCancelBody = false;
@@ -575,6 +593,11 @@ namespace System.Net.Http
             BufferBytes(normalizedMethod.Http3EncodedBytes);
             BufferIndexedHeader(H3StaticTable.SchemeHttps);
 
+            if (request.HasHeaders && request.Headers.Protocol != null)
+            {
+                BufferLiteralHeaderWithoutNameReference(":protocol", request.Headers.Protocol, null);
+            }
+
             if (request.HasHeaders && request.Headers.Host != null)
             {
                 BufferLiteralHeaderWithStaticNameReference(H3StaticTable.Authority, request.Headers.Host);
@@ -607,6 +630,11 @@ namespace System.Net.Http
                 }
 
                 BufferHeaderCollection(request.Headers);
+            }
+
+            if(request.IsWebTransportH3Request)
+            {
+                BufferLiteralHeaderWithoutNameReference(Http3WebtransportSession.CurrentSuppportedVersion, "1", null);
             }
 
             if (_connection.Pool.Settings._useCookies)
@@ -1154,7 +1182,6 @@ namespace System.Net.Http
             try
             {
                 int totalBytesRead = 0;
-
                 do
                 {
                     if (_responseDataPayloadRemaining <= 0 && !await ReadNextDataFrameAsync(response, cancellationToken).ConfigureAwait(false))

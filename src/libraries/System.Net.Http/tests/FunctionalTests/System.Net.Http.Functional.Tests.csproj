@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <StringResourcesPath>../../src/Resources/Strings.resx</StringResourcesPath>
     <DefineConstants>$(DefineConstants);SYSNETHTTP_NO_OPENSSL;HTTP3</DefineConstants>
@@ -136,6 +136,7 @@
              Link="Common\System\Net\Http\DribbleStream.cs" />
     <Compile Include="$(CommonTestPath)System\Net\Http\CustomContent.cs"
              Link="Common\System\Net\Http\CustomContent.cs" />
+    <Compile Include="HttpWebtransportSessionTest.cs" />
     <Compile Include="DelegatingHandlerTest.cs" />
     <Compile Include="FakeDiagnosticSourceListenerObserver.cs" />
     <Compile Include="FormUrlEncodedContentTest.cs" />
